@@ -37,23 +37,28 @@ const mapRoots: Partial<Record<MapTheme, THREE.Group>> = {};
 const activeMapMeshes: THREE.Mesh[] = [];
 let activeMapBounds: THREE.Box3[] = [];
 let collisionBounds: THREE.Box3[] = [];
+let activeWorldBounds: THREE.Box3 | null = null;
 const mapLoading = new Set<MapTheme>();
 function refreshActiveMapCollision(theme: MapTheme) {
   activeMapMeshes.length = 0;
   activeMapBounds = [];
   const root = mapRoots[theme];
   if (!root) {
+    activeWorldBounds = null;
     collisionBounds = collisionMeshes.map(mesh => new THREE.Box3().setFromObject(mesh));
     return;
   }
   root.updateMatrixWorld(true);
+  activeWorldBounds = new THREE.Box3().setFromObject(root);
   root.traverse(node => {
     if (!(node instanceof THREE.Mesh) || !node.geometry) return;
     activeMapMeshes.push(node);
     const bounds = new THREE.Box3().setFromObject(node);
     const size = bounds.getSize(new THREE.Vector3());
-    // Ignore walkable ground sheets and huge merged terrain slabs for player-body collision.
-    if (size.y > .55 && size.x < 42 && size.z < 42 && size.y < 18) activeMapBounds.push(bounds);
+    const overlapsPlayer = bounds.max.y > .45 && bounds.min.y < 1.85;
+    const footprint = Math.max(size.x, size.z);
+    // Ignore walkable ground, terrain slabs and giant merged walls.
+    if (overlapsPlayer && size.y > .7 && size.y < 16 && footprint < 18) activeMapBounds.push(bounds);
   });
   collisionBounds = activeMapBounds;
 }
@@ -78,7 +83,9 @@ function loadCombatMap(theme: MapTheme) {
       console.warn(`Invalid ${theme} map bounds; keeping procedural fallback.`);
       return;
     }
-    const scale = Math.min(1, 86 / maxDimension);
+    const horizontalFootprint = Math.max(size.x, size.z);
+    // Normalize each authored map to a consistent playable footprint.
+    const scale = THREE.MathUtils.clamp(82 / Math.max(horizontalFootprint, 0.001), 0.01, 3.0);
     model.scale.setScalar(scale);
     model.updateMatrixWorld(true);
     const fitted = new THREE.Box3().setFromObject(model);
@@ -150,7 +157,10 @@ renderer.toneMappingExposure = 1.22;
 let pixelCap = 1.35;
 let rainFraction = 1;
 // 4x MSAA render target: the composer bypasses the canvas antialiasing, so jagged edges need this.
-const composer = new EffectComposer(renderer, new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, samples: 4 }));
+const composer = new EffectComposer(renderer, new THREE.WebGLRenderTarget(1, 1, {
+  type: THREE.UnsignedByteType,
+  samples: renderer.capabilities.isWebGL2 ? 4 : 0
+}));
 composer.setPixelRatio(renderer.getPixelRatio());
 composer.addPass(new RenderPass(scene, camera));
 const bloomPass = new UnrealBloomPass(
@@ -176,7 +186,7 @@ const fxPass = new ShaderPass({
 composer.addPass(fxPass);
 composer.addPass(new OutputPass());
 
-scene.add(new THREE.HemisphereLight(0xc9e1ed, 0x25201b, 1.55));
+scene.add(new THREE.HemisphereLight(0xc9e1ed, 0x25201b, 1.9));
 const sun = new THREE.DirectionalLight(0xffd4a0, 3.8);
 sun.position.set(-18, 32, 15); sun.castShadow = true;
 sun.shadow.mapSize.set(2048, 2048);
@@ -186,9 +196,9 @@ scene.add(sun);
 
 function applyGraphicsQuality(level: "low" | "medium" | "high") {
   const presets = {
-    low: { pixelRatio: 1, shadowSize: 512, bloom: .18, shadows: false },
-    medium: { pixelRatio: 1.25, shadowSize: 1024, bloom: .3, shadows: true },
-    high: { pixelRatio: 1.75, shadowSize: 2048, bloom: .42, shadows: true }
+    low: { pixelRatio: .9, shadowSize: 512, bloom: .12, shadows: false },
+    medium: { pixelRatio: 1.15, shadowSize: 1024, bloom: .24, shadows: true },
+    high: { pixelRatio: 1.5, shadowSize: 2048, bloom: .34, shadows: true }
   };
   const preset = presets[level];
   renderer.setPixelRatio(Math.min(devicePixelRatio,preset.pixelRatio));
@@ -1250,7 +1260,9 @@ function animate() {
       if (remaining <= 0) { showEnd(true); }
     }
     const forward=new THREE.Vector3(); camera.getWorldDirection(forward); forward.y=0; forward.normalize();
-    const right=new THREE.Vector3().crossVectors(forward,new THREE.Vector3(0,1,0)).normalize().negate();
+    // Camera forward is -Z at yaw 0; forward × up is world +X.
+    // Keep this vector positive so D moves right and A moves left.
+    const right=new THREE.Vector3().crossVectors(forward,new THREE.Vector3(0,1,0)).normalize();
     const move=new THREE.Vector3();
     if(keys.has("w")) move.add(forward);
     if(keys.has("s")) move.sub(forward);
@@ -1260,8 +1272,12 @@ function animate() {
       move.normalize().multiplyScalar(player.speed*(keys.has("shift")?player.sprint:1)*dt);
       const nextX=camera.position.x+move.x;
       const nextZ=camera.position.z+move.z;
-      if(!collidesAt(nextX,camera.position.z)) camera.position.x=nextX;
-      if(!collidesAt(camera.position.x,nextZ)) camera.position.z=nextZ;
+      const radius=.34;
+      const playerAlreadyOverlapping=collidesAt(camera.position.x,camera.position.z,radius);
+      // Axis-separated movement allows wall sliding. If an imported map collider
+      // overlaps the spawn point, allow one step out instead of trapping the player.
+      if(!collidesAt(nextX,camera.position.z,radius) || playerAlreadyOverlapping) camera.position.x=nextX;
+      if(!collidesAt(camera.position.x,nextZ,radius) || playerAlreadyOverlapping) camera.position.z=nextZ;
     }
     const moving = move.lengthSq() > 0;
     const t = performance.now() * .006;
@@ -1274,8 +1290,15 @@ function animate() {
     weaponGroup.position.y = (moving ? Math.sin(t*1.8)*.012 : Math.sin(t*.55)*.004) + swayY - reloadBlend*.22;
     weaponGroup.position.x = (moving ? Math.cos(t*.9)*.009 : 0) + swayX;
     weaponGroup.rotation.z = (moving ? Math.sin(t*.9)*.012 : 0) + reloadBlend*.5;
-    camera.position.x=THREE.MathUtils.clamp(camera.position.x,-19,19);
-    camera.position.z=THREE.MathUtils.clamp(camera.position.z,-39,25);
+    if(activeWorldBounds && Number.isFinite(activeWorldBounds.min.x) && Number.isFinite(activeWorldBounds.max.x)) {
+      const size=activeWorldBounds.getSize(new THREE.Vector3());
+      const pad=Math.min(2,Math.max(.75,Math.min(size.x,size.z)*.035));
+      camera.position.x=THREE.MathUtils.clamp(camera.position.x,activeWorldBounds.min.x+pad,activeWorldBounds.max.x-pad);
+      camera.position.z=THREE.MathUtils.clamp(camera.position.z,activeWorldBounds.min.z+pad,activeWorldBounds.max.z-pad);
+    } else {
+      camera.position.x=THREE.MathUtils.clamp(camera.position.x,-19,19);
+      camera.position.z=THREE.MathUtils.clamp(camera.position.z,-39,25);
+    }
     if(!player.grounded) {
       player.verticalVelocity-=22*dt; camera.position.y+=player.verticalVelocity*dt;
       if(camera.position.y<= (player.crouching?1.12:1.7)) { camera.position.y=player.crouching?1.12:1.7; player.verticalVelocity=0; player.grounded=true; }
@@ -1388,7 +1411,9 @@ document.querySelector<HTMLInputElement>("#fov-slider")!.addEventListener("input
   baseFov=Number((event.currentTarget as HTMLInputElement).value); setText("#fov-value",String(baseFov));
 });
 document.addEventListener("keydown",e=>{
-  keys.add(e.key.toLowerCase());
+  const key=e.key.toLowerCase();
+  if(started && !paused && ["w","a","s","d"," ","arrowup","arrowdown","arrowleft","arrowright"].includes(key)) e.preventDefault();
+  keys.add(key);
   if(e.key.toLowerCase()==="r") reload();
   if(e.key==="1") switchWeapon(0);
   if(e.key==="2") switchWeapon(1);
@@ -1428,7 +1453,11 @@ mapSelect?.addEventListener("change", () => {
   const map = mapSelect.value as MapTheme;
   if (map in mapSources) setCombatMap(map);
 });
+// Preload all three campaign environments in the background. Successfully loaded
+// maps stay cached, avoiding a blocking download at chapter transitions.
 loadCombatMap("urban");
+window.setTimeout(()=>loadCombatMap("arctic"),250);
+window.setTimeout(()=>loadCombatMap("desert"),700);
 
 document.querySelector("#start-button")!.addEventListener("click",()=>{
   document.querySelector("#start-screen")!.classList.add("hidden"); resetGame();
