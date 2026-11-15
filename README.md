@@ -47,7 +47,6 @@ The Windows setup script runs both steps automatically. Once the downloads finis
 - `public/assets/maps/urban.glb`
 - `public/assets/maps/arctic.glb`
 - `public/assets/maps/desert.glb`
-- `public/assets/characters/veteran-running.glb`
 
 The game uses local system fonts, so Google Fonts is not required. To build a Windows installer that includes the downloaded maps, run `BUILD_WINDOWS.ps1` after setup.
 
