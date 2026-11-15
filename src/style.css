@@ -1,9 +1,8 @@
-@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700;800;900&family=Rajdhani:wght@400;500;600;700&display=swap');
-:root{font-family:'Rajdhani',sans-serif;color:#e8edf0;background:#090d12;font-synthesis:none;text-rendering:optimizeLegibility}
+:root{font-family:"Segoe UI",sans-serif;color:#e8edf0;background:#090d12;font-synthesis:none;text-rendering:optimizeLegibility}
 *{box-sizing:border-box}html,body,#game-root{margin:0;width:100%;height:100%;overflow:hidden}body{user-select:none}#game-canvas{display:block;width:100%;height:100%;outline:0}
 #vignette{position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at center,transparent 42%,rgba(0,0,0,.48) 100%);transition:background .08s}#vignette.damage{background:radial-gradient(ellipse at center,rgba(130,0,0,.05) 15%,rgba(190,12,12,.5) 100%)}
 #hud{position:absolute;inset:0;pointer-events:none}.topline{position:absolute;top:28px;left:34px;right:34px;display:flex;justify-content:space-between;align-items:flex-start}
-.brand{display:flex;align-items:center;gap:12px}.brand-mark{width:42px;height:42px;display:grid;place-items:center;background:#d7a34a;color:#101519;font:900 28px 'Barlow Condensed';clip-path:polygon(0 0,100% 0,100% 75%,75% 100%,0 100%)}
+.brand{display:flex;align-items:center;gap:12px}.brand-mark{width:42px;height:42px;display:grid;place-items:center;background:#d7a34a;color:#101519;font:900 28px "Arial Narrow";clip-path:polygon(0 0,100% 0,100% 75%,75% 100%,0 100%)}
 .brand b{display:block;font:800 19px 'Barlow Condensed';letter-spacing:2px}.brand small{display:block;color:#aab5b8;font-size:9px;letter-spacing:3px;margin-top:2px}
 .wave-box{text-align:right;border-right:2px solid #d7a34a;padding-right:12px}.wave-box small{display:block;color:#aab5b8;font-size:9px;letter-spacing:2px}.wave-box b{font:800 32px 'Barlow Condensed';line-height:1.05}
 .status-left{position:absolute;left:36px;bottom:42px;width:220px}.status-label{font-size:10px;letter-spacing:3px;color:#c0c9c9;margin-bottom:8px}.health-track{height:5px;background:#283033;width:100%}.health-track div{height:100%;width:100%;background:#d7a34a;transition:width .2s}.status-values{display:flex;align-items:baseline;gap:8px;margin-top:5px}.status-values b{font:700 24px 'Barlow Condensed'}.status-values span{font-size:9px;letter-spacing:2px;color:#aab5b8}
@@ -29,7 +28,7 @@ button{pointer-events:auto;cursor:pointer;border:0;background:#d7a34a;color:#111
 
 /* Tactical radar */
 .radar-panel{position:absolute;top:105px;right:34px;width:164px;padding:8px;background:rgba(7,12,15,.68);border:1px solid rgba(215,163,74,.28);backdrop-filter:blur(5px)}
-.radar-label{display:flex;justify-content:space-between;font:700 9px 'Barlow Condensed';letter-spacing:2px;color:#c4ccca;margin-bottom:5px}.radar-label span{color:#d7a34a}.radar-panel canvas{display:block;width:100%;height:auto;opacity:.96}.radar-legend{font:8px 'Rajdhani';letter-spacing:1px;color:#aab5b8;text-align:center;margin-top:4px}.radar-legend i{display:inline-block;width:6px;height:6px;border-radius:50%;background:#ff6252;margin-right:4px}.radar-legend b{color:#e5b45e;margin-left:7px}
+.radar-label{display:flex;justify-content:space-between;font:700 9px 'Barlow Condensed';letter-spacing:2px;color:#c4ccca;margin-bottom:5px}.radar-label span{color:#d7a34a}.radar-panel canvas{display:block;width:100%;height:auto;opacity:.96}.radar-legend{font:8px "Segoe UI";letter-spacing:1px;color:#aab5b8;text-align:center;margin-top:4px}.radar-legend i{display:inline-block;width:6px;height:6px;border-radius:50%;background:#ff6252;margin-right:4px}.radar-legend b{color:#e5b45e;margin-left:7px}
 @media(max-width:650px){.radar-panel{top:130px;right:12px;width:112px;padding:5px}.radar-label{font-size:7px}.radar-legend{font-size:7px}}
 
 
@@ -57,7 +56,7 @@ button.secondary-button:hover,button.secondary-button.selected{background:#d7a34
 .quality-options{display:flex;gap:9px;margin-top:14px;flex-wrap:wrap}.quality-options button{flex:1;min-width:90px}
 .controls-grid{display:grid;grid-template-columns:150px 1fr;gap:12px 18px;margin:12px 0 28px}
 .controls-grid span{padding:9px 12px;background:rgba(215,163,74,.1);border:1px solid rgba(215,163,74,.22);font:700 12px 'Barlow Condensed';letter-spacing:1px;color:#e7bd78}
-.controls-grid b{align-self:center;font:600 12px 'Rajdhani';letter-spacing:1.5px;color:#dce3e1}
+.controls-grid b{align-self:center;font:600 12px "Segoe UI";letter-spacing:1.5px;color:#dce3e1}
 @media(max-width:650px){.start-content{width:92vw}.main-menu-actions button{width:100%}.controls-grid{grid-template-columns:112px 1fr;gap:9px}.settings-card{padding:22px}}
 
 /* ---- Upgrade pass: boss bar + low-health warning ---- */
@@ -78,6 +77,6 @@ button.secondary-button:hover,button.secondary-button.selected{background:#d7a34
 /* Deployment mode selector */
 .mode-picker{display:grid;gap:7px;width:260px;margin:0 0 14px}
 .mode-picker label{font:700 10px 'Barlow Condensed';letter-spacing:2.5px;color:#d7a34a}
-.mode-picker select{width:100%;min-height:42px;padding:9px 12px;background:rgba(12,20,24,.96);color:#edf0eb;border:1px solid rgba(215,163,74,.5);font:700 11px 'Rajdhani',sans-serif;letter-spacing:1px;outline:none}
+.mode-picker select{width:100%;min-height:42px;padding:9px 12px;background:rgba(12,20,24,.96);color:#edf0eb;border:1px solid rgba(215,163,74,.5);font:700 11px "Segoe UI",sans-serif;letter-spacing:1px;outline:none}
 .mode-picker select:focus{border-color:#f0c77d;box-shadow:0 0 0 2px rgba(215,163,74,.16)}
 @media(max-width:650px){.mode-picker{width:min(260px,100%)}}
