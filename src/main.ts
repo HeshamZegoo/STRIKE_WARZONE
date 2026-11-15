@@ -85,6 +85,12 @@ function loadCombatMap(theme: MapTheme) {
     const root = new THREE.Group();
     root.name = `combat-map-${theme}`;
     const model = gltf.scene;
+    // Strip decorative statue/mannequin assets from environment packs. These are
+    // static display props, not combatants, and make the battlefield look cluttered.
+    const unwantedProp = /statue|sculpture|monument|bust|mannequin|dummy|pedestal|display.?figure|human.?figure/i;
+    model.traverse(node => {
+      if (node !== model && unwantedProp.test(node.name || "")) node.parent?.remove(node);
+    });
     model.updateMatrixWorld(true);
     const bounds = new THREE.Box3().setFromObject(model);
     const size = bounds.getSize(new THREE.Vector3());
@@ -163,7 +169,7 @@ function setCombatMap(theme: MapTheme) {
 }
 
 
-const camera = new THREE.PerspectiveCamera(69, innerWidth / innerHeight, 0.1, 220);
+const camera = new THREE.PerspectiveCamera(66, innerWidth / innerHeight, 0.1, 260);
 camera.position.set(0, 1.7, 12);
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: "high-performance" });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 1.35));
@@ -356,8 +362,8 @@ for (let i=0;i<22;i++) {
   cornice.position.set(side*17.84,h-.12,z); scene.add(cornice);
 }
 
-// Street debris, broken concrete, road markings and tactical cover.
-for (let i=0;i<90;i++) {
+// Restrained battlefield debris: keep lanes readable and avoid decorative clutter.
+for (let i=0;i<28;i++) {
   const x = (Math.random()-.5)*34, z = -38 + Math.random()*62;
   const size = .08 + Math.random()*.34;
   const debris = new THREE.Mesh(new THREE.DodecahedronGeometry(size,0), i%3===0 ? sand : concrete);
@@ -473,7 +479,7 @@ const raycaster = new THREE.Raycaster();
 const center = new THREE.Vector2(0,0);
 let locked = false, started = false, paused = false, wave = 0;
 let mouseSensitivity = 0.0022;
-let baseFov = 69;
+let baseFov = 66;
 let settingsReturnScreen = "start-screen";
 let fireHeld = false;
 let aiming = false;
@@ -879,7 +885,8 @@ function makeEnemy(x:number,z:number,type:EnemyType="grunt"): Enemy {
     character.updateMatrixWorld(true);
     const rawBounds = new THREE.Box3().setFromObject(character);
     const rawHeight = Math.max(.01, rawBounds.getSize(new THREE.Vector3()).y);
-    character.scale.setScalar(1.82 / rawHeight);
+    // Normalize against a full human height, then give gameplay units a clear readable silhouette.
+    character.scale.setScalar(2.02 / rawHeight);
     character.updateMatrixWorld(true);
     const fittedBounds = new THREE.Box3().setFromObject(character);
     character.position.y -= fittedBounds.min.y;
@@ -890,8 +897,8 @@ function makeEnemy(x:number,z:number,type:EnemyType="grunt"): Enemy {
     const marker = new THREE.Mesh(new THREE.RingGeometry(.38,.5,24), new THREE.MeshBasicMaterial({color:0xff5544,side:THREE.DoubleSide}));
     marker.position.set(0,2.15,0); marker.rotation.x=Math.PI/2; marker.visible=false; g.add(marker);
     const stats = type==="heavy" ? { hp:750, speed:.85, scale:1.18 }
-      : type==="rusher" ? { hp:60, speed:3.4+Math.random()*.6, scale:.96 }
-      : { hp:100, speed:1.15+Math.random()*.65, scale:1 };
+      : type==="rusher" ? { hp:60, speed:3.4+Math.random()*.6, scale:1.08 }
+      : { hp:100, speed:1.15+Math.random()*.65, scale:1.08 };
     g.scale.setScalar(stats.scale);
     g.position.set(x,0,z);
     scene.add(g);
@@ -1016,7 +1023,7 @@ function pickSpawn(zone: "far" | "rear") {
     const angle = zone === "rear"
       ? camera.rotation.y + Math.PI + (Math.random() - .5) * 1.25
       : camera.rotation.y + (Math.random() - .5) * 2.1;
-    const radius = 20 + Math.random() * 10;
+    const radius = 13 + Math.random() * 8;
     let x = camera.position.x + Math.sin(angle) * radius;
     let z = camera.position.z + Math.cos(angle) * radius;
     if (bounds) {
