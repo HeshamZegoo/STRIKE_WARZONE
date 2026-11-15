@@ -129,6 +129,7 @@ for (let i=0;i<95;i++) {
 }
 skyCtx.filter = "none";
 const skyTexture = new THREE.CanvasTexture(skyCanvas);
+skyTexture.colorSpace = THREE.SRGBColorSpace;
 const sky = new THREE.Mesh(new THREE.SphereGeometry(125, 48, 28), new THREE.MeshBasicMaterial({
   map: skyTexture, side: THREE.BackSide, fog: false
 }));
