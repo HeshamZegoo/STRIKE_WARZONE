@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
@@ -272,6 +273,50 @@ const ashGeometry=new THREE.BufferGeometry();
 ashGeometry.setAttribute("position",new THREE.BufferAttribute(ashPositions,3));
 const ashField=new THREE.Points(ashGeometry,new THREE.PointsMaterial({color:0xb7a58b,size:.045,transparent:true,opacity:.34,depthWrite:false}));
 scene.add(ashField);
+
+
+// Licensed CC0 tactical town starter scene. If the CDN is unavailable, the
+// existing procedural fallback remains visible and fully playable.
+const tacticalMapLoader = new GLTFLoader();
+const proceduralFallback = scene.children.filter(object =>
+  object !== camera && object !== ground && object !== sky && !(object instanceof THREE.Light)
+);
+tacticalMapLoader.load(
+  "https://cdn.3dassets.dev/assets/27595/v1/model.glb",
+  (gltf) => {
+    const importedMap = gltf.scene;
+    importedMap.updateMatrixWorld(true);
+    const bounds = new THREE.Box3().setFromObject(importedMap);
+    const size = bounds.getSize(new THREE.Vector3());
+    const maxDimension = Math.max(size.x, size.z, size.y);
+    if (!Number.isFinite(maxDimension) || maxDimension <= 0) {
+      console.warn("Tactical map loaded with invalid bounds; keeping fallback map.");
+      return;
+    }
+    // Fit the authored map into the current combat arena without stretching it.
+    const fitScale = Math.min(1, 72 / maxDimension);
+    importedMap.scale.setScalar(fitScale);
+    importedMap.updateMatrixWorld(true);
+    const fittedBounds = new THREE.Box3().setFromObject(importedMap);
+    const center = fittedBounds.getCenter(new THREE.Vector3());
+    importedMap.position.x -= center.x;
+    importedMap.position.z -= center.z;
+    importedMap.position.y -= fittedBounds.min.y;
+    importedMap.traverse((node) => {
+      if (node instanceof THREE.Mesh) {
+        node.castShadow = true;
+        node.receiveShadow = true;
+        node.frustumCulled = true;
+      }
+    });
+    scene.add(importedMap);
+    // Keep the original collision data for now; swap only its visible geometry.
+    proceduralFallback.forEach(object => { object.visible = false; });
+    console.info("CC0 Tactical Shooter Hill Town map loaded.", { size: size.toArray(), fitScale });
+  },
+  undefined,
+  (error) => console.warn("External map unavailable; procedural Warzone remains active.", error)
+);
 
 const player = { speed: 7.5, sprint: 1.55, health: 100, reloading: false, lastShot: 0, verticalVelocity: 0, crouching: false, grounded: true };
 const enemies: Enemy[] = [];
