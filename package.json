@@ -9,7 +9,9 @@
     "preview": "vite preview",
     "tauri": "tauri",
     "tauri:dev": "tauri dev",
-    "tauri:build": "tauri build"
+    "tauri:build": "tauri build",
+    "assets:download": "node scripts/download-assets.mjs",
+    "setup:offline": "npm install && npm run assets:download"
   },
   "dependencies": {
     "three": "^0.180.0"
