@@ -22,11 +22,18 @@
       "scope": "assembled canyon section, not the entire 88-model pack"
     }
   ],
-  "characters": [],
+  "characters": [
+    {
+      "id": "soldier",
+      "name": "Three.js Soldier",
+      "url": "/assets/characters/soldier.glb",
+      "license": "MIT",
+      "scope": "Rigged humanoid with Idle, Walk, Run and T-Pose animation clips"
+    }
+  ],
   "notes": [
-    "All 3D maps are downloaded once into public/assets/maps and loaded from local paths at runtime.",
-    "Run npm run assets:download while online once; after that the game does not request remote map files.",
-    "Enemy soldiers use the project's animated procedural tactical rig; no static posed character is loaded.",
+    "All three maps are downloaded and GLB-validated locally before the game starts, then preloaded sequentially in the background.",
+    "Enemy bots use independent skeleton clones of the rigged animated soldier GLB; procedural characters are only a fallback if the model fails to load.",
     "Imported GLB scenes provide visual geometry only; gameplay collision/navmesh remains project-owned.",
     "Fonts use local system fallbacks; no Google Fonts request is made."
   ]
