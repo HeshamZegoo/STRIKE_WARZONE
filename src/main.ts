@@ -29,7 +29,7 @@ type MapTheme = "urban" | "arctic" | "desert";
 let selectedMap: MapTheme = "urban";
 const mapSources: Record<MapTheme, { label: string; url: string }> = {
   urban: { label: "HILL TOWN // URBAN", url: "https://cdn.3dassets.dev/assets/27595/v1/model.glb" },
-  arctic: { label: "ARCTIC STATION", url: "https://cdn.3dassets.dev/assets/28553/v1/model.glb" },
+  arctic: { label: "FROZEN LAKE // ARCTIC RETREAT", url: "https://cdn.3dassets.dev/assets/19851/v1/model.glb" },
   desert: { label: "DESERT CANYON", url: "https://cdn.3dassets.dev/assets/21034/v1/model.glb" }
 };
 const mapLoader = new GLTFLoader();
