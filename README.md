@@ -35,7 +35,7 @@ Set-ExecutionPolicy -Scope Process Bypass
 
 ## Fully offline game assets
 
-The game loads its maps and soldier model from local files under `public/assets/`; it does not fetch 3D models from a CDN while playing. The first setup needs an internet connection one time to download the assets:
+The game loads its maps from local files under `public/assets/maps/`; enemy soldiers are animated procedural characters, and the game does not fetch 3D models from a CDN while playing. The first setup needs an internet connection one time to download the assets:
 
 ```powershell
 npm install
