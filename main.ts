@@ -608,13 +608,29 @@ function spawnWave() {
   for (let i=0;i<count;i++) {
     const a = (i/count)*Math.PI*2 + Math.random()*.3;
     const r = 23 + Math.random()*10;
-    enemies.push(makeEnemy(Math.cos(a)*r, -7 + Math.sin(a)*r));
+    const enemy = makeEnemy(Math.cos(a)*r, -7 + Math.sin(a)*r);
+    if (selectedMode === "campaign" && wave === 3 && i === 0) {
+      enemy.hp = 260;
+      enemy.speed *= .72;
+      enemy.mesh.scale.setScalar(1.24);
+      enemy.mesh.traverse(part => { if (part instanceof THREE.Mesh) { (part.material as THREE.MeshStandardMaterial).color?.setHex(0x252c2a); } });
+    }
+    enemies.push(enemy);
   }
   setText("#wave", String(wave).padStart(2,"0"));
   setText("#enemies-left", `HOSTILES: ${count}`);
   setText("#objective-title", wave === 1 ? "SECURE THE DISTRICT" : wave === 2 ? "REPEL THE COUNTERATTACK" : "ELIMINATE THE HEAVY UNIT");
   setText("#objective-detail", `HOSTILES REMAINING: ${count}`);
-  notify(selectedMode === "survival" ? `ENDLESS WAR — WAVE ${wave}` : selectedMode === "time-attack" ? `TIME ATTACK — WAVE ${wave}` : `OPERATION BLACKOUT — WAVE ${wave}/${MAX_CAMPAIGN_WAVES}`);
+  if (selectedMode === "campaign") {
+    const radioBriefings = [
+      "COMMAND: BLACKOUT IS IN EFFECT. SECURE THE DISTRICT AND CLEAR ALL HOSTILES.",
+      "RADIO: ENEMY REINFORCEMENTS ARE MOVING IN FROM THE EAST. HOLD YOUR POSITION.",
+      "INTEL: HOSTILE HEAVY OPERATOR IDENTIFIED. ELIMINATE THE TARGET, THEN MOVE TO EXTRACTION."
+    ];
+    notify(radioBriefings[Math.min(wave-1, radioBriefings.length-1)]);
+  } else {
+    notify(selectedMode === "survival" ? `ENDLESS WAR — WAVE ${wave}` : `TIME ATTACK — WAVE ${wave}`);
+  }
 }
 function setText(selector:string, value:string) { const el=document.querySelector<HTMLElement>(selector); if(el) el.textContent=value; }
 function notify(message:string) {
