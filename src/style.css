@@ -73,3 +73,11 @@ button.secondary-button{border-color:rgba(178,138,85,.38)}
 button.secondary-button:hover,button.secondary-button.selected{background:#b28a55;color:#0b1012}
 .settings-card{border-color:rgba(178,138,85,.35);background:linear-gradient(145deg,rgba(11,17,19,.985),rgba(4,7,9,.99))}
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
+
+
+.selection-panel{display:grid;grid-template-columns:1fr;gap:7px;width:min(360px,88vw);margin:18px 0 14px;padding:14px 16px;border:1px solid rgba(190,204,197,.2);background:rgba(7,13,15,.72);backdrop-filter:blur(12px);text-align:left}
+.selection-panel label{font-size:9px;letter-spacing:2px;color:#c5a46d;font-weight:800;margin-top:4px}
+.selection-panel select{width:100%;min-height:40px;padding:9px 12px;color:#e7e8df;background:#17201f;border:1px solid rgba(196,174,133,.38);font:700 11px inherit;letter-spacing:1px;outline:none}
+.selection-panel select:focus{border-color:#c5a46d}
+.selection-panel small{font-size:9px;letter-spacing:1.4px;color:#8f9b91}
+@media(max-width:600px){.selection-panel{margin:12px 0;width:min(320px,86vw);padding:11px 12px}.selection-panel select{min-height:36px}}
