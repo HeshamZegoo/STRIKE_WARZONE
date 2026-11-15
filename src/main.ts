@@ -76,6 +76,7 @@ function loadCombatMap(theme: MapTheme) {
   const existing = mapRoots[theme];
   if (existing) {
     Object.entries(mapRoots).forEach(([key, root]) => { if (root) root.visible = key === theme; });
+    preloadNextMap();
     return;
   }
   if (mapLoading.has(theme)) return;
