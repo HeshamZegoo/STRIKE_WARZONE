@@ -149,7 +149,7 @@ function setCombatMap(theme: MapTheme) {
 }
 
 
-const camera = new THREE.PerspectiveCamera(76, innerWidth / innerHeight, 0.1, 180);
+const camera = new THREE.PerspectiveCamera(69, innerWidth / innerHeight, 0.1, 220);
 camera.position.set(0, 1.7, 12);
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: "high-performance" });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 1.35));
@@ -459,7 +459,7 @@ const raycaster = new THREE.Raycaster();
 const center = new THREE.Vector2(0,0);
 let locked = false, started = false, paused = false, wave = 0;
 let mouseSensitivity = 0.0022;
-let baseFov = 76;
+let baseFov = 69;
 let settingsReturnScreen = "start-screen";
 let fireHeld = false;
 let aiming = false;
@@ -777,6 +777,7 @@ function updateEffects(dt: number) {
 }
 
 const weaponGroup = new THREE.Group();
+weaponGroup.scale.setScalar(1.2);
 camera.add(weaponGroup); scene.add(camera);
 let gunBody: THREE.Mesh;
 let muzzle: THREE.PointLight;
@@ -851,50 +852,8 @@ function switchWeapon(index:number) {
   activeWeapon=index; reloadToken++; player.reloading=false; buildWeaponVisual(index); notify(`WEAPON SELECTED — ${weapons[index].name}`);
 }
 
-const operatorLoader = new GLTFLoader();
-const OPERATOR_MODEL_URL = "/assets/characters/veteran-running.glb";
-let operatorTemplate: THREE.Group | null = null;
-let operatorAnimations: THREE.AnimationClip[] = [];
-let operatorLoading = false;
-function attachOperatorModel(enemy: Enemy) {
-  if (!operatorTemplate || !enemy.alive || enemy.type !== "grunt" || enemy.mesh.userData.hasImportedOperator) return;
-  const imported = cloneSkinned(operatorTemplate);
-  imported.name = "cc0-static-operator";
-  imported.position.set(0, 0, 0);
-  imported.scale.setScalar(1);
-  imported.traverse(node => {
-    node.userData.enemy = enemy;
-    if (node instanceof THREE.Mesh) { node.castShadow = true; node.receiveShadow = true; }
-  });
-  enemy.mesh.children.forEach(child => { if (child !== enemy.marker) child.visible = false; });
-  const initialBounds = new THREE.Box3().setFromObject(imported);
-  const initialSize = initialBounds.getSize(new THREE.Vector3());
-  if (initialSize.y > .01) imported.scale.setScalar(1.85 / initialSize.y);
-  imported.updateMatrixWorld(true);
-  const fittedBounds = new THREE.Box3().setFromObject(imported);
-  const fittedCenter = fittedBounds.getCenter(new THREE.Vector3());
-  imported.position.set(-fittedCenter.x, -fittedBounds.min.y, -fittedCenter.z);
-  enemy.mesh.add(imported);
-  if (operatorAnimations.length) {
-    enemy.mixer = new THREE.AnimationMixer(imported);
-    enemy.mixer.clipAction(operatorAnimations[0]).play();
-  }
-  enemy.mesh.userData.hasImportedOperator = true;
-}
-function ensureOperatorModel() {
-  if (operatorTemplate || operatorLoading) return;
-  operatorLoading = true;
-  operatorLoader.load(OPERATOR_MODEL_URL, gltf => {
-    operatorTemplate = gltf.scene;
-    operatorAnimations = gltf.animations ?? [];
-    operatorLoading = false;
-    enemies.forEach(attachOperatorModel);
-    console.info("Loaded CC0 Veteran Running Pose operator model.");
-  }, undefined, error => {
-    operatorLoading = false;
-    console.warn("Operator model unavailable; procedural soldier fallback remains active.", error);
-  });
-}
+// Enemy soldiers use the animated tactical procedural rig below.
+// The previous imported running-pose GLB was not rigged and hid the moving limbs.
 
 function makeEnemy(x:number,z:number,type:EnemyType="grunt"): Enemy {
   const g = new THREE.Group();
@@ -974,8 +933,6 @@ function makeEnemy(x:number,z:number,type:EnemyType="grunt"): Enemy {
     eye.position.set(0,1.78,-.26); g.add(eye);
   }
   const enemy: Enemy = { type, maxHp:stats.hp, mesh:g, hp:stats.hp, speed:stats.speed, attackAt:0, alive:true, state:"advance", strafeDir:Math.random()>.5?1:-1, marker, leftLeg, rightLeg, leftArm, rightArm, gait:Math.random()*Math.PI*2 };
-  ensureOperatorModel();
-  attachOperatorModel(enemy);
   head.userData.hitZone = "head";
   marker.raycast = () => {};
   // Tag every nested mesh so arm/leg/gear hits register (previously only direct children counted).
@@ -999,12 +956,28 @@ function createExtraction() {
 }
 
 function pickSpawn(zone: "far" | "rear") {
-  for (let tries = 0; tries < 30; tries++) {
-    const x = (Math.random()-.5)*28;
-    const z = zone === "far" ? -38 + Math.random()*9 : 19 + Math.random()*5;
-    if (!collidesAt(x, z, 1.1)) return new THREE.Vector3(x, 0, z);
+  const centerX = activeWorldBounds ? (activeWorldBounds.min.x + activeWorldBounds.max.x) * .5 : 0;
+  const centerZ = activeWorldBounds ? (activeWorldBounds.min.z + activeWorldBounds.max.z) * .5 : 0;
+  const bounds = activeWorldBounds;
+  for (let tries = 0; tries < 60; tries++) {
+    const angle = zone === "rear"
+      ? camera.rotation.y + Math.PI + (Math.random() - .5) * 1.25
+      : camera.rotation.y + (Math.random() - .5) * 2.1;
+    const radius = 20 + Math.random() * 10;
+    let x = camera.position.x + Math.sin(angle) * radius;
+    let z = camera.position.z + Math.cos(angle) * radius;
+    if (bounds) {
+      x = THREE.MathUtils.clamp(x, bounds.min.x + 3, bounds.max.x - 3);
+      z = THREE.MathUtils.clamp(z, bounds.min.z + 3, bounds.max.z - 3);
+    } else {
+      x = THREE.MathUtils.clamp(x, -19, 19);
+      z = THREE.MathUtils.clamp(z, -39, 25);
+    }
+    if (Math.hypot(x-camera.position.x, z-camera.position.z) < 12) continue;
+    if (!mapRoots[selectedMap] && collidesAt(x, z, 1.1)) continue;
+    return new THREE.Vector3(x, 0, z);
   }
-  return new THREE.Vector3(0, 0, -34);
+  return new THREE.Vector3(centerX, 0, centerZ - 24);
 }
 function resupply() {
   player.health = Math.min(100, player.health + 25);
@@ -1042,7 +1015,7 @@ function spawnWave() {
   };
   for (let i = 0; i < grunts; i++) spawn("grunt");
   for (let i = 0; i < rushers; i++) spawn("rusher");
-  for (let i = 0; i < heavies; i++) spawn("heavy", new THREE.Vector3((i-(heavies-1)/2)*7, 0, -36));
+  for (let i = 0; i < heavies; i++) spawn("heavy");
   const count = grunts + rushers + heavies;
   setText("#wave", String(wave).padStart(2,"0"));
   setText("#enemies-left", `HOSTILES: ${count}`);
@@ -1209,7 +1182,13 @@ function resetGame() {
   player.health=100; damageImmuneUntil=0; player.reloading=false; player.verticalVelocity=0; player.crouching=false; player.grounded=true;
   weapons.forEach(w=>{w.ammo=w.magazine;}); weapons[0].reserve=180; weapons[1].reserve=72; weapons[2].reserve=102; weapons[3].reserve=48; weapons[4].reserve=200;
   grenadeObjects.forEach(g=>scene.remove(g.mesh)); grenadeObjects.length=0; clearEffects(); grenades=3; killStreak=0; totalKills=0; objectiveKills=0; activeWeapon=0; buildWeaponVisual(0);
-  camera.position.set(0,1.7,12); camera.rotation.set(0,0,0); wave=0; score=0; missionStartedAt=performance.now(); timeAttackEndsAt=missionStartedAt+5*60*1000;
+  camera.position.set(0,1.7,12);
+  if(activeWorldBounds) {
+    const cx=(activeWorldBounds.min.x+activeWorldBounds.max.x)*.5;
+    const cz=(activeWorldBounds.min.z+activeWorldBounds.max.z)*.5;
+    camera.position.set(cx,1.7,cz+Math.min(12,activeWorldBounds.getSize(new THREE.Vector3()).z*.18));
+  }
+  camera.rotation.set(0,0,0); wave=0; score=0; missionStartedAt=performance.now(); timeAttackEndsAt=missionStartedAt+5*60*1000;
   document.querySelector("#end-screen")!.classList.add("hidden");
   document.querySelector("#pause-screen")!.classList.add("hidden");
   updateHUD(); setText("#best-score", String(bestScore).padStart(6,"0")); spawnWave(); paused=false; started=true;
@@ -1335,10 +1314,17 @@ function animate() {
       // Simple local steering keeps infantry from walking through cover and building corners.
       const er=e.type==="heavy"?.7:.42;
       const nextX=e.mesh.position.x+vx*dt, nextZ=e.mesh.position.z+vz*dt;
-      if(!collidesAt(nextX,e.mesh.position.z,er)) e.mesh.position.x=nextX;
-      else { e.strafeDir*=-1; vx=0; }
-      if(!collidesAt(e.mesh.position.x,nextZ,er)) e.mesh.position.z=nextZ;
-      else { e.strafeDir*=-1; vz=0; }
+      // Imported GLB collision bounds are often merged/oversized. Do not let
+      // approximate asset bounds freeze enemy AI; retain cover collision in fallback arena.
+      if(mapRoots[selectedMap]) {
+        e.mesh.position.x=nextX;
+        e.mesh.position.z=nextZ;
+      } else {
+        if(!collidesAt(nextX,e.mesh.position.z,er)) e.mesh.position.x=nextX;
+        else { e.strafeDir*=-1; vx=0; }
+        if(!collidesAt(e.mesh.position.x,nextZ,er)) e.mesh.position.z=nextZ;
+        else { e.strafeDir*=-1; vz=0; }
+      }
       e.gait += dt*(e.type==="rusher"?13:e.state==="advance"?8:e.state==="flank"?5:2);
       const stride=(e.state==="engage"?.08:.42)*Math.sin(e.gait);
       e.leftLeg.rotation.x=stride; e.rightLeg.rotation.x=-stride;
