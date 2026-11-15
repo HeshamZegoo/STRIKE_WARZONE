@@ -1,0 +1,41 @@
+{
+  "maps": [
+    {
+      "id": "urban",
+      "name": "Tactical Shooter Hill Town",
+      "url": "https://cdn.3dassets.dev/assets/27595/v1/model.glb",
+      "license": "CC0-1.0",
+      "scope": "85-model pack starter scene"
+    },
+    {
+      "id": "arctic",
+      "name": "Arctic Station FPS Kit",
+      "url": "https://cdn.3dassets.dev/assets/28553/v1/model.glb",
+      "license": "CC0-1.0",
+      "scope": "81-model pack starter scene"
+    },
+    {
+      "id": "desert",
+      "name": "Desert Canyons and Oases - Canyon Narrows Assembly",
+      "url": "https://cdn.3dassets.dev/assets/21034/v1/model.glb",
+      "license": "CC0-1.0",
+      "scope": "assembled canyon section, not the entire 88-model pack"
+    }
+  ],
+  "characters": [
+    {
+      "id": "veteran-running",
+      "name": "Veteran Running Pose",
+      "url": "https://cdn.3dassets.dev/assets/27593/v1/model.glb",
+      "license": "CC0-1.0",
+      "rigged": false,
+      "animated": false
+    }
+  ],
+  "notes": [
+    "All URLs are loaded at runtime through Three.js GLTFLoader.",
+    "The veteran model is a static posed mesh; it is not a skinned animated character.",
+    "The imported GLB scenes provide visual geometry only; gameplay collision/navmesh remains project-owned.",
+    "An internet connection is required unless the GLBs are downloaded and the URLs changed to local public/assets paths."
+  ]
+}

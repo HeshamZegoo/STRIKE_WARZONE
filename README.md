@@ -136,3 +136,87 @@ These changes are source-level implementation; a browser/Windows build still nee
 
 ### Quality note
 This remains a procedural Three.js/Tauri indie prototype, not a finished AAA production. Character meshes, animations, weapon models, environment assets, authored audio, QA and real HDR display output still require dedicated production work. The HDR-inspired ACES + bloom pass is not a claim of HDR10 output.
+
+
+## Upgrade pass: enemies, boss, audio, effects
+
+**Gameplay**
+- Three enemy types: grunts (ranged), rushers (fast melee, low HP) and a Heavy Unit boss in wave 3 with a boss health bar.
+- Enemies drop health, ammo and frag pickups. A resupply is granted between waves.
+- Bullets are now blocked by buildings and cover. Shotgun damage falls off with distance.
+- Grenades can hurt you if you stand too close.
+- Waves spawn on the street (far end, plus rear flanks from wave 2) instead of inside buildings.
+
+**Bug fixes**
+- Enemies were facing away from the player; they now face you.
+- Hits on arms, legs and gear never registered; every enemy part now counts.
+- The grenade kill path skipped streak and score logic; both paths now share one kill function.
+- Removed the duplicate root main.ts and style.css (Vite uses src/). Added src/vite-env.d.ts.
+
+**Feel and visuals**
+- Particle system (blood, sparks, dust, casings, explosions), death animation, screen shake, fireball and blast light.
+- Gradient dusk sky, drifting dust, flickering street lamps with glowing bulbs, sprint FOV and head bob, low-health warning.
+
+**Audio (all synthesised, no asset files)**
+- Per-weapon gunshots, explosions, enemy fire, hit ticks, reload clicks, pickup chimes, wind ambience and a tension drone.
+
+Verification: the code was type-checked against a stub of Three.js only, because npm install was unavailable here.
+Run npm install && npm run build on your PC before packaging.
+
+
+## Upgrade pass 2: cinema FX, 5-wave campaign, combat feel
+
+- 4x MSAA render target (the post-processing chain was bypassing canvas antialiasing), plus a lens pass with chromatic aberration (kicks on damage and explosions) and film grain.
+- Campaign is now 5 waves: a Heavy Unit in wave 3 and two Heavies in wave 5, with rushers scaling up each wave.
+- Damage direction arc shows where hits come from. Kill combo multiplier with a headshot/kill readout.
+- Weapon sway from mouse movement, reload animation, recoil that climbs the view.
+- Fixed: resizing the window reset the pixel ratio and ignored the graphics quality setting.
+
+For real AAA visuals the next step is authored assets (rigged soldier and weapon models as .glb, animations, recorded audio). Free CC0 sources: Quaternius, Kenney, Mixamo, Freesound.
+
+
+## Upgrade pass 3: environment and materials (all procedural, no downloads)
+
+- Procedural normal maps on every surface (concrete, asphalt, sand, metal); asphalt is now wet and catches the lamp light.
+- Rain that follows the player, with rain audio. Scales with graphics quality (off on LOW, half on MEDIUM).
+- Setting sun on the horizon and a warm rim light so enemies read against the dusk.
+- Battlefield cover: 3 wrecked cars, 5 crate stacks, 3 sandbag walls and 2 burning barrels with flickering firelight. All block movement and bullets.
+
+
+## Deployment modes added
+- Story Campaign: the authored five-wave Operation Blackout sequence with extraction.
+- Endless Survival: escalating enemy waves with periodic Heavy Units.
+- Time Attack: five-minute score challenge with escalating enemy waves.
+
+The Arctic/Desert map packs and rigged character/weapon downloads are not bundled in this source archive. The current playable arena remains the procedural urban environment; do not treat visual presets or external asset links as imported playable maps/models.
+
+
+## Long campaign + real GLB asset integration (2026-11)
+
+- Story Campaign is now a 12-chapter operation. Chapters 1–4 deploy in the Urban Hill Town, 5–8 in Arctic Station, and 9–12 in the Desert Canyon. Heavy-unit boss encounters are placed at chapters 3, 6 and 9, with three heavies in the final chapter.
+- Added three selectable GLB environment packs, loaded on demand with Three.js GLTFLoader:
+  - Urban: `https://cdn.3dassets.dev/assets/27595/v1/model.glb` — Tactical Shooter Hill Town.
+  - Arctic: `https://cdn.3dassets.dev/assets/28553/v1/model.glb` — Arctic Station FPS Kit.
+  - Desert: `https://cdn.3dassets.dev/assets/21034/v1/model.glb` — Desert Canyons and Oases.
+- Added the CC0 static Veteran Running Pose operator (`https://cdn.3dassets.dev/assets/27593/v1/model.glb`) as the enemy visual when available. If the asset cannot load, the procedural soldier remains as fallback.
+- These operator meshes are static poses (not rigged or animated). The gameplay still moves the root transform and keeps the existing hit/AI logic; this is not a substitute for a skinned animated soldier.
+- 4x MSAA is applied to the EffectComposer render targets when WebGL2 supports multisampled render targets, preserving edge smoothing through post-processing.
+- The imported map packs are visual GLB scenes; the project still uses its own gameplay collision and navigation logic. The map packs do not provide ready-made navmeshes or collision scripts.
+- CDN loading needs an internet connection. For offline builds, download each GLB into `public/assets/` and replace the CDN URLs with local paths.
+- All three environment packs and the operator are listed as CC0 1.0 on their 3DAssets.dev pages.
+
+Sources:
+- https://3dassets.dev/packs/tactical-shooter-hill-town
+- https://3dassets.dev/packs/arctic-station-fps-kit
+- https://3dassets.dev/assets/desert-canyons-and-oases-canyon-narrows--d32cadc7-starter-scene
+- https://3dassets.dev/assets/tactical-shooter-hill-town-veteran-running-1660b930
+
+
+## Integrated campaign and world-collision pass
+
+- The single-player campaign now runs for 12 chapters across Urban, Arctic and Desert deployments, with named chapter objectives and escalating enemy compositions.
+- Authored GLB maps replace the procedural fallback when they load successfully; the fallback remains visible if a map request fails. This avoids drawing the imported map on top of the placeholder arena.
+- Active GLB map meshes are now included in bullet and enemy line-of-sight raycasts. Per-mesh world bounds are also added to player/enemy movement collision where the mesh represents a bounded obstacle; broad terrain and floor sheets are intentionally excluded.
+- The imported soldier is cloned with Three.js `SkeletonUtils` so skinned meshes can be cloned safely. It is normalized to the game soldier height, and the first animation clip is played when the source GLB actually contains animation data. Heavy and rusher silhouettes keep their purpose-built procedural forms.
+- Ammo pickups and between-wave resupply now have reserve caps to prevent unlimited reserve-ammo growth.
+- These changes are source-level integration. The GLB URLs require internet access, and their actual asset contents, map-specific collision quality, browser performance, and Windows/Tauri build still require in-game verification. When a GLB fails to load, the game falls back to the procedural arena.
