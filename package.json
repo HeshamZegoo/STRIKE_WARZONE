@@ -11,7 +11,10 @@
     "tauri:dev": "tauri dev",
     "tauri:build": "tauri build",
     "assets:download": "node scripts/download-assets.mjs",
-    "setup:offline": "npm install && npm run assets:download"
+    "setup:offline": "npm install && npm run assets:download",
+    "predev": "npm run assets:download",
+    "prebuild": "npm run assets:download",
+    "pretauri:build": "npm run assets:download"
   },
   "dependencies": {
     "three": "^0.180.0"
