@@ -19,6 +19,8 @@ jobs:
           targets: x86_64-pc-windows-msvc
       - name: Install dependencies
         run: npm install
+      - name: Generate Windows app icons
+        run: npx tauri icon src-tauri/app-icon.svg --output src-tauri/icons
       - name: Build Windows installers
         run: npm run tauri:build
       - name: Upload installers
