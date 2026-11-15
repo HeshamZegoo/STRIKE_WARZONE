@@ -53,6 +53,25 @@ sun.shadow.camera.left = -45; sun.shadow.camera.right = 45;
 sun.shadow.camera.top = 45; sun.shadow.camera.bottom = -45;
 scene.add(sun);
 
+function applyGraphicsQuality(level: "low" | "medium" | "high") {
+  const presets = {
+    low: { pixelRatio: 1, shadowSize: 512, bloom: .18, shadows: false },
+    medium: { pixelRatio: 1.25, shadowSize: 1024, bloom: .3, shadows: true },
+    high: { pixelRatio: 1.75, shadowSize: 2048, bloom: .42, shadows: true }
+  };
+  const preset = presets[level];
+  renderer.setPixelRatio(Math.min(devicePixelRatio,preset.pixelRatio));
+  renderer.setSize(innerWidth,innerHeight);
+  renderer.shadowMap.enabled=preset.shadows;
+  sun.shadow.mapSize.set(preset.shadowSize,preset.shadowSize);
+  sun.shadow.needsUpdate=true;
+  bloomPass.strength=preset.bloom;
+  composer.setSize(innerWidth,innerHeight);
+  document.querySelectorAll<HTMLButtonElement>("[data-quality]").forEach(button=>
+    button.classList.toggle("selected",button.dataset.quality===level));
+}
+applyGraphicsQuality("high");
+
 // Procedural PBR surface library: generated locally, no external asset dependency.
 function makeSurface(base: string, roughness: number, repeatX: number, repeatY: number, grain = 24) {
   const c = document.createElement("canvas"); c.width = 512; c.height = 512;
@@ -112,34 +131,39 @@ for (let i=0;i<22;i++) {
   const h = 5 + (i%5)*1.7;
   const building = box(side*23,h/2,z, 10,h,6, i%3===0 ? sand : concrete);
   collisionMeshes.push(building);
-  for (let f=0;f<3;f++) box(side*23 + (side*-1)*((f-1)*2.5), h*0.58, z-3.06, 1.1, 1.1, .12, dark, false);
+  // Facade windows are built on the inward-facing side wall below.
 }
 // Architectural facade treatment: window recesses, lintels, ledges and damaged panels.
 for (let i=0;i<22;i++) {
   const side = i % 2 === 0 ? -1 : 1;
   const z = -35 + Math.floor(i/2)*7;
   const h = 5 + (i%5)*1.7;
-  const facadeX = side * 17.92;
+  const facadeX = side * 17.91;
   for (let floor = 0; floor < Math.max(2, Math.floor(h/2.5)); floor++) {
     for (let bay = 0; bay < 3; bay++) {
-      const wx = facadeX + (bay-1)*2.55;
+      const wz = z + (bay-1)*1.72;
       const wy = 1.65 + floor*2.35;
-      const pane = new THREE.Mesh(new THREE.BoxGeometry(1.12, 1.22, .10), glass);
-      pane.position.set(wx, wy, z-3.08); pane.castShadow = true; scene.add(pane);
-      const frame = new THREE.Mesh(new THREE.BoxGeometry(1.32, .12, .16), metal);
-      frame.position.set(wx, wy-.69, z-3.12); scene.add(frame);
-      const mullion = new THREE.Mesh(new THREE.BoxGeometry(.055, 1.28, .13), dark);
-      mullion.position.set(wx, wy, z-3.16); scene.add(mullion);
+      const recess = new THREE.Mesh(new THREE.BoxGeometry(.13,1.42,1.38),dark);
+      recess.position.set(facadeX,wy,wz); scene.add(recess);
+      const pane = new THREE.Mesh(new THREE.BoxGeometry(.07,1.16,1.12),glass);
+      pane.position.set(side*17.82,wy,wz); pane.castShadow=true; scene.add(pane);
+      const sill = new THREE.Mesh(new THREE.BoxGeometry(.2,.12,1.48),metal);
+      sill.position.set(side*17.79,wy-.66,wz); scene.add(sill);
+      const lintel = new THREE.Mesh(new THREE.BoxGeometry(.2,.12,1.48),metal);
+      lintel.position.set(side*17.79,wy+.66,wz); scene.add(lintel);
+      const mullion = new THREE.Mesh(new THREE.BoxGeometry(.11,1.2,.055),dark);
+      mullion.position.set(side*17.77,wy,wz); scene.add(mullion);
       if ((i+floor+bay)%5===0) {
-        const glow = new THREE.Mesh(new THREE.PlaneGeometry(.78,.88), new THREE.MeshBasicMaterial({
-          color: 0xffb56d, transparent:true, opacity:.24
+        const glow = new THREE.Mesh(new THREE.PlaneGeometry(1.0,.88),new THREE.MeshBasicMaterial({
+          color:0xffb56d,transparent:true,opacity:.2,depthWrite:false
         }));
-        glow.position.set(wx,wy,z-3.18); scene.add(glow);
+        glow.rotation.y=side*Math.PI/2;
+        glow.position.set(side*17.75,wy,wz); scene.add(glow);
       }
     }
   }
-  const cornice = new THREE.Mesh(new THREE.BoxGeometry(10.25,.16,.28), metal);
-  cornice.position.set(side*23,h-.12,z-3.08); scene.add(cornice);
+  const cornice = new THREE.Mesh(new THREE.BoxGeometry(.28,.16,6.25),metal);
+  cornice.position.set(side*17.84,h-.12,z); scene.add(cornice);
 }
 
 // Street debris, broken concrete, road markings and tactical cover.
@@ -183,6 +207,9 @@ const keys = new Set<string>();
 const raycaster = new THREE.Raycaster();
 const center = new THREE.Vector2(0,0);
 let locked = false, started = false, paused = false, wave = 0;
+let mouseSensitivity = 0.0022;
+let baseFov = 76;
+let settingsReturnScreen = "start-screen";
 let fireHeld = false;
 let aiming = false;
 let grenades = 3;
@@ -555,7 +582,7 @@ function animate() {
     }
     const moving = move.lengthSq() > 0;
     const t = performance.now() * .006;
-    const targetFov=aiming?57:76; camera.fov=THREE.MathUtils.lerp(camera.fov,targetFov,1-Math.exp(-12*dt)); camera.updateProjectionMatrix();
+    const targetFov=aiming?Math.max(48,baseFov-19):baseFov; camera.fov=THREE.MathUtils.lerp(camera.fov,targetFov,1-Math.exp(-12*dt)); camera.updateProjectionMatrix();
     recoil=THREE.MathUtils.lerp(recoil,0,1-Math.exp(-10*dt));
     weaponGroup.position.z=THREE.MathUtils.lerp(weaponGroup.position.z,aiming ? .16 : 0,1-Math.exp(-12*dt));
     weaponGroup.rotation.x=THREE.MathUtils.lerp(weaponGroup.rotation.x,-recoil,1-Math.exp(-18*dt));
@@ -623,6 +650,44 @@ function animate() {
 }
 animate();
 
+function openSettings(returnTo:string) {
+  settingsReturnScreen=returnTo;
+  document.querySelectorAll<HTMLElement>(".screen").forEach(screen=>screen.classList.add("hidden"));
+  document.querySelector("#settings-screen")!.classList.remove("hidden");
+  document.exitPointerLock?.();
+}
+function closeSettings() {
+  document.querySelector("#settings-screen")!.classList.add("hidden");
+  document.querySelector<HTMLElement>("#"+settingsReturnScreen)!.classList.remove("hidden");
+  if(settingsReturnScreen==="pause-screen") paused=true;
+}
+function showMainMenu() {
+  document.exitPointerLock?.(); locked=false; fireHeld=false; aiming=false; keys.clear();
+  paused=true; started=false;
+  document.querySelectorAll<HTMLElement>(".screen").forEach(screen=>screen.classList.add("hidden"));
+  document.querySelector("#start-screen")!.classList.remove("hidden");
+}
+document.querySelector("#settings-start")!.addEventListener("click",()=>openSettings("start-screen"));
+document.querySelector("#settings-pause")!.addEventListener("click",()=>openSettings("pause-screen"));
+document.querySelector("#settings-back")!.addEventListener("click",closeSettings);
+document.querySelector("#controls-start")!.addEventListener("click",()=>{
+  document.querySelector("#start-screen")!.classList.add("hidden");
+  document.querySelector("#controls-screen")!.classList.remove("hidden");
+});
+document.querySelector("#controls-back")!.addEventListener("click",()=>{
+  document.querySelector("#controls-screen")!.classList.add("hidden");
+  document.querySelector("#start-screen")!.classList.remove("hidden");
+});
+document.querySelector("#main-menu-button")!.addEventListener("click",showMainMenu);
+document.querySelectorAll<HTMLButtonElement>("[data-quality]").forEach(button=>
+  button.addEventListener("click",()=>applyGraphicsQuality(button.dataset.quality as "low"|"medium"|"high")));
+document.querySelector<HTMLInputElement>("#sensitivity-slider")!.addEventListener("input",event=>{
+  mouseSensitivity=Number((event.currentTarget as HTMLInputElement).value);
+  setText("#sensitivity-value",mouseSensitivity.toFixed(4));
+});
+document.querySelector<HTMLInputElement>("#fov-slider")!.addEventListener("input",event=>{
+  baseFov=Number((event.currentTarget as HTMLInputElement).value); setText("#fov-value",String(baseFov));
+});
 document.addEventListener("keydown",e=>{
   keys.add(e.key.toLowerCase());
   if(e.key.toLowerCase()==="r") reload();
@@ -638,15 +703,16 @@ document.addEventListener("keydown",e=>{
   if(e.key==="Escape" && started) {
     paused=!paused;
     document.querySelector("#pause-screen")!.classList.toggle("hidden",!paused);
-    if(paused) document.exitPointerLock(); else canvas.requestPointerLock();
+    if(paused) { fireHeld=false; aiming=false; document.exitPointerLock(); }
+    else canvas.requestPointerLock();
   }
 });
 document.addEventListener("keyup",e=>{ keys.delete(e.key.toLowerCase()); if(e.key.toLowerCase()==="c") player.crouching=false; });
 document.addEventListener("mousemove",e=>{
   if(!locked || paused) return;
   camera.rotation.order="YXZ";
-  camera.rotation.y-=e.movementX*.0022;
-  camera.rotation.x-=e.movementY*.0022;
+  camera.rotation.y-=e.movementX*mouseSensitivity;
+  camera.rotation.x-=e.movementY*mouseSensitivity;
   camera.rotation.x=THREE.MathUtils.clamp(camera.rotation.x,-1.45,1.45);
 });
 document.addEventListener("pointerlockchange",()=>{locked=document.pointerLockElement===canvas;});
