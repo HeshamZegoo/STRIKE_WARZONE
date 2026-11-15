@@ -196,7 +196,7 @@ The Arctic/Desert map packs and rigged character/weapon downloads are not bundle
 - Story Campaign is now a 12-chapter operation. Chapters 1–4 deploy in the Urban Hill Town, 5–8 in Arctic Station, and 9–12 in the Desert Canyon. Heavy-unit boss encounters are placed at chapters 3, 6 and 9, with three heavies in the final chapter.
 - Added three selectable GLB environment packs, loaded on demand with Three.js GLTFLoader:
   - Urban: `https://cdn.3dassets.dev/assets/27595/v1/model.glb` — Tactical Shooter Hill Town.
-  - Arctic: `https://cdn.3dassets.dev/assets/28553/v1/model.glb` — Arctic Station FPS Kit.
+  - Arctic: `https://cdn.3dassets.dev/assets/19851/v1/model.glb` — Frozen Lake Retreat (Alpine Snow Village, 54.2k triangles).
   - Desert: `https://cdn.3dassets.dev/assets/21034/v1/model.glb` — Desert Canyons and Oases.
 - Added the CC0 static Veteran Running Pose operator (`https://cdn.3dassets.dev/assets/27593/v1/model.glb`) as the enemy visual when available. If the asset cannot load, the procedural soldier remains as fallback.
 - These operator meshes are static poses (not rigged or animated). The gameplay still moves the root transform and keeps the existing hit/AI logic; this is not a substitute for a skinned animated soldier.
@@ -207,7 +207,7 @@ The Arctic/Desert map packs and rigged character/weapon downloads are not bundle
 
 Sources:
 - https://3dassets.dev/packs/tactical-shooter-hill-town
-- https://3dassets.dev/packs/arctic-station-fps-kit
+- https://3dassets.dev/assets/alpine-snow-village-frozen-lake-retreat-0a32c8c3
 - https://3dassets.dev/assets/desert-canyons-and-oases-canyon-narrows--d32cadc7-starter-scene
 - https://3dassets.dev/assets/tactical-shooter-hill-town-veteran-running-1660b930
 
@@ -220,3 +220,14 @@ Sources:
 - The imported soldier is cloned with Three.js `SkeletonUtils` so skinned meshes can be cloned safely. It is normalized to the game soldier height, and the first animation clip is played when the source GLB actually contains animation data. Heavy and rusher silhouettes keep their purpose-built procedural forms.
 - Ammo pickups and between-wave resupply now have reserve caps to prevent unlimited reserve-ammo growth.
 - These changes are source-level integration. The GLB URLs require internet access, and their actual asset contents, map-specific collision quality, browser performance, and Windows/Tauri build still require in-game verification. When a GLB fails to load, the game falls back to the procedural arena.
+
+
+## Movement, map-loading and performance fixes (2026-11)
+
+- Corrected the first-person strafe basis: W/S move forward/back and A/D move left/right.
+- Movement collision is axis-separated, allows wall sliding, and can recover if an imported collider overlaps the spawn point.
+- Player world limits now come from the active GLB map bounds instead of the old fixed urban-arena limits.
+- Map loading is on-demand rather than downloading all three large scenes at startup; successful maps are cached and loading progress/fallback status is reported.
+- Replaced the oversized Arctic Station starter scene (45.2 MB / 2.1M triangles) with Frozen Lake Retreat (1.2 MB / 54.2k triangles) to reduce load time and GPU pressure.
+- Post-processing now uses a WebGL2-aware multisample target with an unsigned-byte fallback, and graphics presets have more balanced pixel-ratio/bloom costs.
+- Runtime movement and browser interaction still need a final hands-on test in the target browser/Windows build.
