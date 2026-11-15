@@ -59,3 +59,17 @@ button.secondary-button:hover,button.secondary-button.selected{background:#d7a34
 .controls-grid span{padding:9px 12px;background:rgba(215,163,74,.1);border:1px solid rgba(215,163,74,.22);font:700 12px 'Barlow Condensed';letter-spacing:1px;color:#e7bd78}
 .controls-grid b{align-self:center;font:600 12px 'Rajdhani';letter-spacing:1.5px;color:#dce3e1}
 @media(max-width:650px){.start-content{width:92vw}.main-menu-actions button{width:100%}.controls-grid{grid-template-columns:112px 1fr;gap:9px}.settings-card{padding:22px}}
+
+
+/* Grounded military presentation: restrained color, harder edges and atmospheric depth. */
+:root{color-scheme:dark}
+#game-canvas{filter:contrast(1.09) saturate(.78) brightness(.91)}
+#vignette{background:radial-gradient(ellipse at center,transparent 26%,rgba(4,7,8,.28) 68%,rgba(2,4,5,.78) 100%)}
+.screen{background:linear-gradient(90deg,rgba(3,7,9,.96),rgba(4,8,10,.62)),linear-gradient(0deg,rgba(3,6,7,.72),transparent 58%)}
+.brand-mark{background:#b28a55}
+.objective-dot{background:#c79b5e;box-shadow:0 0 8px rgba(199,155,94,.35)}
+button{background:#b28a55;color:#0b1012}
+button.secondary-button{border-color:rgba(178,138,85,.38)}
+button.secondary-button:hover,button.secondary-button.selected{background:#b28a55;color:#0b1012}
+.settings-card{border-color:rgba(178,138,85,.35);background:linear-gradient(145deg,rgba(11,17,19,.985),rgba(4,7,9,.99))}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
