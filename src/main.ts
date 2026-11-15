@@ -198,11 +198,14 @@ let uavUntil = 0;
 const MAX_CAMPAIGN_WAVES = 3;
 let extractionActive = false;
 let sessionEpoch = 0;
+let reloadToken = 0;
 const radarCanvas = document.querySelector<HTMLCanvasElement>("#tactical-radar")!;
 const radarCtx = radarCanvas.getContext("2d")!;
 let extractionMarker: THREE.Group | null = null;
 let bestScore = Number(localStorage.getItem("sw_best_score") || 0);
 const grenadeObjects: { mesh: THREE.Mesh; velocity: THREE.Vector3; fuse: number }[] = [];
+// Static world colliders never move, so cache their bounds instead of rebuilding Box3 objects every frame.
+const collisionBounds = collisionMeshes.map(mesh => new THREE.Box3().setFromObject(mesh));
 
 const weaponGroup = new THREE.Group();
 camera.add(weaponGroup); scene.add(camera);
@@ -278,7 +281,7 @@ function playShot() {
 }
 function switchWeapon(index:number) {
   if(index<0 || index>=weapons.length || index===activeWeapon) return;
-  activeWeapon=index; player.reloading=false; buildWeaponVisual(index); notify(`WEAPON SELECTED — ${weapons[index].name}`);
+  activeWeapon=index; reloadToken++; player.reloading=false; buildWeaponVisual(index); notify(`WEAPON SELECTED — ${weapons[index].name}`);
 }
 
 function makeEnemy(x:number,z:number): Enemy {
@@ -406,8 +409,9 @@ function reload() {
   if (player.reloading || weapon.ammo===weapon.magazine || weapon.reserve<=0) return;
   player.reloading=true; notify("RELOADING...");
   const reloadEpoch = sessionEpoch;
+  const currentReloadToken = ++reloadToken;
   window.setTimeout(()=>{
-    if (reloadEpoch !== sessionEpoch || !player.reloading) return;
+    if (reloadEpoch !== sessionEpoch || currentReloadToken !== reloadToken || !player.reloading) return;
     const needed=weapon.magazine-weapon.ammo, amount=Math.min(needed,weapon.reserve);
     weapon.ammo+=amount; weapon.reserve-=amount; player.reloading=false; updateHUD();
   },weapon.reloadMs);
@@ -424,6 +428,7 @@ function shoot() {
   const pellets=weapon.pellets ?? 1;
   for(let i=0;i<pellets;i++) {
     const spread=(weapon.spread ?? .003)*(aiming ? .35 : 1);
+    raycaster.near=0; raycaster.far=Infinity;
     raycaster.setFromCamera(new THREE.Vector2((Math.random()-.5)*spread,(Math.random()-.5)*spread),camera);
     const targets=enemies.filter(e=>e.alive).map(e=>e.mesh);
     const hit=raycaster.intersectObjects(targets,true)[0];
@@ -475,6 +480,8 @@ function detonateGrenade(item:{mesh:THREE.Mesh;velocity:THREE.Vector3;fuse:numbe
 }
 function resetGame() {
   sessionEpoch++;
+  reloadToken++;
+  fireHeld=false; aiming=false; keys.clear();
   enemies.forEach(e=>scene.remove(e.mesh)); enemies.length=0;
   if (extractionMarker) scene.remove(extractionMarker); extractionMarker=null; extractionActive=false;
   player.health=100; damageImmuneUntil=0; player.reloading=false; player.verticalVelocity=0; player.crouching=false; player.grounded=true;
@@ -508,8 +515,7 @@ function drawRadar() {
   ctx.save();ctx.translate(px,py);ctx.rotate(-camera.rotation.y);ctx.fillStyle="#e5b45e";ctx.beginPath();ctx.moveTo(0,-7);ctx.lineTo(5,5);ctx.lineTo(0,3);ctx.lineTo(-5,5);ctx.closePath();ctx.fill();ctx.restore();
 }
 function collidesAt(x:number,z:number,radius=.48) {
-  for (const obstacle of collisionMeshes) {
-    const b = new THREE.Box3().setFromObject(obstacle);
+  for (const b of collisionBounds) {
     const closestX = THREE.MathUtils.clamp(x,b.min.x,b.max.x);
     const closestZ = THREE.MathUtils.clamp(z,b.min.z,b.max.z);
     const dx=x-closestX, dz=z-closestZ;
@@ -522,8 +528,11 @@ function hasLineOfSight(from:THREE.Vector3,to:THREE.Vector3) {
   const distance=direction.length();
   direction.normalize();
   raycaster.set(from,direction);
+  raycaster.near=0;
   raycaster.far=Math.max(0,distance-.45);
-  return raycaster.intersectObjects(collisionMeshes,false).length===0;
+  const blocked=raycaster.intersectObjects(collisionMeshes,false).length>0;
+  raycaster.far=Infinity;
+  return !blocked;
 }
 
 function animate() {
