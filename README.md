@@ -33,6 +33,24 @@ Set-ExecutionPolicy -Scope Process Bypass
 .\SETUP_WINDOWS.ps1
 ```
 
+## Fully offline game assets
+
+The game loads its maps and soldier model from local files under `public/assets/`; it does not fetch 3D models from a CDN while playing. The first setup needs an internet connection one time to download the assets:
+
+```powershell
+npm install
+npm run assets:download
+```
+
+The Windows setup script runs both steps automatically. Once the downloads finish, you can disconnect from the internet and run the game locally. Keep these folders with the project:
+
+- `public/assets/maps/urban.glb`
+- `public/assets/maps/arctic.glb`
+- `public/assets/maps/desert.glb`
+- `public/assets/characters/veteran-running.glb`
+
+The game uses local system fonts, so Google Fonts is not required. To build a Windows installer that includes the downloaded maps, run `BUILD_WINDOWS.ps1` after setup.
+
 ## Run desktop game
 
 ```powershell
