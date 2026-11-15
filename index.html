@@ -38,13 +38,59 @@
         <div class="eyebrow"><span></span> CLASSIFIED // SINGLE PLAYER CAMPAIGN</div>
         <h1>STRIKE<br><strong>WARZON</strong></h1>
         <p>OPERATION BLACKOUT // URBAN WARFARE CAMPAIGN</p>
-        <button id="start-button">DEPLOY <span>→</span></button>
-        <div class="start-hint">3 WAVES · FINAL EXTRACTION &nbsp; • &nbsp; WASD MOVE &nbsp; • &nbsp; RMB AIM &nbsp; • &nbsp; LMB FIRE &nbsp; • &nbsp; 1–5 WEAPONS &nbsp; • &nbsp; G FRAG</div>
+        <div class="main-menu-actions">
+          <button id="start-button">PLAY CAMPAIGN <span>→</span></button>
+          <button id="controls-start" class="secondary-button">CONTROLS</button>
+          <button id="settings-start" class="secondary-button">SETTINGS</button>
+        </div>
+        <div class="start-hint">OPERATION BLACKOUT · SINGLE PLAYER · 3 COMBAT WAVES</div>
       </div>
       <div class="copyright">© 2026 Hesham.Zego. All Rights Reserved.</div>
     </div>
     <div id="pause-screen" class="screen hidden">
-      <div class="pause-card"><div class="eyebrow">COMBAT PAUSED</div><h2>MISSION<br><strong>ON HOLD</strong></h2><button id="resume-button">RESUME MISSION →</button><small>WASD MOVE · SHIFT SPRINT · RMB AIM · G FRAG · ESC RESUME</small></div>
+      <div class="pause-card">
+        <div class="eyebrow">COMBAT PAUSED</div><h2>MISSION<br><strong>ON HOLD</strong></h2>
+        <div class="menu-stack">
+          <button id="resume-button">RESUME MISSION</button>
+          <button id="settings-pause" class="secondary-button">SETTINGS</button>
+          <button id="main-menu-button" class="secondary-button">MAIN MENU</button>
+        </div><small>ESC TO RESUME</small>
+      </div>
+    </div>
+    <div id="settings-screen" class="screen hidden">
+      <div class="settings-card">
+        <div class="eyebrow">SYSTEM CONFIGURATION</div><h2>GAME <strong>SETTINGS</strong></h2>
+        <section class="setting-group">
+          <label>GRAPHICS QUALITY</label>
+          <div class="quality-options">
+            <button class="secondary-button" data-quality="low">LOW</button>
+            <button class="secondary-button" data-quality="medium">MEDIUM</button>
+            <button class="secondary-button selected" data-quality="high">HIGH</button>
+          </div>
+        </section>
+        <section class="setting-group">
+          <label for="sensitivity-slider">MOUSE SENSITIVITY <b id="sensitivity-value">0.0022</b></label>
+          <input id="sensitivity-slider" type="range" min="0.0008" max="0.0045" step="0.0001" value="0.0022">
+        </section>
+        <section class="setting-group">
+          <label for="fov-slider">FIELD OF VIEW <b id="fov-value">76</b></label>
+          <input id="fov-slider" type="range" min="65" max="100" step="1" value="76">
+        </section>
+        <button id="settings-back">SAVE & BACK</button>
+      </div>
+    </div>
+    <div id="controls-screen" class="screen hidden">
+      <div class="settings-card controls-card">
+        <div class="eyebrow">FIELD MANUAL</div><h2>COMBAT <strong>CONTROLS</strong></h2>
+        <div class="controls-grid">
+          <span>W A S D</span><b>MOVE</b><span>SHIFT</span><b>SPRINT</b>
+          <span>SPACE</span><b>JUMP</b><span>C</span><b>CROUCH</b>
+          <span>LEFT CLICK</span><b>FIRE</b><span>RIGHT CLICK</span><b>AIM DOWN SIGHTS</b>
+          <span>R</span><b>RELOAD</b><span>1 – 5</span><b>SWITCH WEAPON</b>
+          <span>G</span><b>THROW GRENADE</b><span>ESC</span><b>PAUSE</b>
+        </div>
+        <button id="controls-back">BACK TO MENU</button>
+      </div>
     </div>
     <div id="end-screen" class="screen hidden">
       <div class="pause-card"><div class="eyebrow">OPERATION BLACKOUT // MISSION REPORT</div><h2 id="end-title">MISSION<br><strong>FAILED</strong></h2><p id="end-copy">Your deployment has ended.</p><button id="restart-button">REDEPLOY →</button></div>
