@@ -18,8 +18,8 @@ let activeWeapon = 0;
 let audioContext: AudioContext | null = null;
 const canvas = document.querySelector<HTMLCanvasElement>("#game-canvas")!;
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x8a9699);
-scene.fog = new THREE.Fog(0x8a9699, 32, 115);
+scene.background = new THREE.Color(0x343c40);
+scene.fog = new THREE.FogExp2(0x4b514f, 0.0105);
 
 const camera = new THREE.PerspectiveCamera(76, innerWidth / innerHeight, 0.1, 180);
 camera.position.set(0, 1.7, 12);
@@ -30,7 +30,8 @@ renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.22;
+renderer.toneMappingExposure = 0.92;
+renderer.shadowMap.autoUpdate = true;
 
 // HDR-inspired cinematic post-processing. This expands highlight contrast and
 // adds restrained bloom; actual HDR10 output still depends on the display/browser.
@@ -45,8 +46,8 @@ const bloomPass = new UnrealBloomPass(
 composer.addPass(bloomPass);
 composer.addPass(new OutputPass());
 
-scene.add(new THREE.HemisphereLight(0xc9e1ed, 0x25201b, 1.55));
-const sun = new THREE.DirectionalLight(0xffd4a0, 3.8);
+scene.add(new THREE.HemisphereLight(0xa9b8bd, 0x171916, 0.78));
+const sun = new THREE.DirectionalLight(0xd6b28a, 2.35);
 sun.position.set(-18, 32, 15); sun.castShadow = true;
 sun.shadow.mapSize.set(2048, 2048);
 sun.shadow.camera.left = -45; sun.shadow.camera.right = 45;
@@ -55,9 +56,9 @@ scene.add(sun);
 
 function applyGraphicsQuality(level: "low" | "medium" | "high") {
   const presets = {
-    low: { pixelRatio: 1, shadowSize: 512, bloom: .18, shadows: false },
-    medium: { pixelRatio: 1.25, shadowSize: 1024, bloom: .3, shadows: true },
-    high: { pixelRatio: 1.75, shadowSize: 2048, bloom: .42, shadows: true }
+    low: { pixelRatio: 1, shadowSize: 512, bloom: .08, shadows: false },
+    medium: { pixelRatio: 1.25, shadowSize: 1024, bloom: .12, shadows: true },
+    high: { pixelRatio: 1.65, shadowSize: 2048, bloom: .16, shadows: true }
   };
   const preset = presets[level];
   renderer.setPixelRatio(Math.min(devicePixelRatio,preset.pixelRatio));
@@ -109,9 +110,28 @@ const collisionMeshes: THREE.Mesh[] = [];
 const ground = new THREE.Mesh(new THREE.PlaneGeometry(150, 150), groundMat);
 ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground);
 
-// Cinematic dusk sky and distant atmospheric skyline.
-const sky = new THREE.Mesh(new THREE.SphereGeometry(125, 32, 18), new THREE.MeshBasicMaterial({
-  color: 0x65747a, side: THREE.BackSide
+// Procedural dusty-warzone sky: layered dusk gradient and broken cloud banks.
+const skyCanvas = document.createElement("canvas");
+skyCanvas.width = 1024; skyCanvas.height = 512;
+const skyCtx = skyCanvas.getContext("2d")!;
+const skyGradient = skyCtx.createLinearGradient(0, 0, 0, 512);
+skyGradient.addColorStop(0, "#18242b");
+skyGradient.addColorStop(.42, "#465052");
+skyGradient.addColorStop(.72, "#77736a");
+skyGradient.addColorStop(1, "#b07b58");
+skyCtx.fillStyle = skyGradient; skyCtx.fillRect(0, 0, 1024, 512);
+skyCtx.filter = "blur(24px)";
+for (let i=0;i<95;i++) {
+  const x=Math.random()*1024, y=100+Math.random()*280;
+  const w=35+Math.random()*150, h=8+Math.random()*34;
+  skyCtx.fillStyle=i%3===0?"rgba(20,29,32,.20)":"rgba(210,177,145,.075)";
+  skyCtx.beginPath(); skyCtx.ellipse(x,y,w,h,0,0,Math.PI*2); skyCtx.fill();
+}
+skyCtx.filter = "none";
+const skyTexture = new THREE.CanvasTexture(skyCanvas);
+skyTexture.colorSpace = THREE.SRGBColorSpace;
+const sky = new THREE.Mesh(new THREE.SphereGeometry(125, 48, 28), new THREE.MeshBasicMaterial({
+  map: skyTexture, side: THREE.BackSide, fog: false
 }));
 scene.add(sky);
 const horizonGlow = new THREE.Mesh(new THREE.PlaneGeometry(150, 42), new THREE.MeshBasicMaterial({
@@ -164,8 +184,38 @@ for (let i=0;i<22;i++) {
   }
   const cornice = new THREE.Mesh(new THREE.BoxGeometry(.28,.16,6.25),metal);
   cornice.position.set(side*17.84,h-.12,z); scene.add(cornice);
+  // Wall-mounted AC compressors, cable trays and drain pipes break up the repeated facade.
+  for (let bay=0;bay<2;bay++) {
+    const unitZ=z+(bay===0?-.95:.95), unitY=Math.max(2.0,h*.58);
+    const ac=box(side*17.72,unitY,unitZ,.42,.48,.72,dark,false);
+    ac.rotation.y=side*.035;
+    box(side*17.48,unitY,unitZ,.055,.34,.5,metal,false);
+    for(let vent=0;vent<4;vent++) box(side*17.44,unitY-.12+vent*.08,unitZ,.035,.025,.42,metal,false);
+  }
+  if(i%3===0) {
+    const pipe=box(side*17.68,h*.48,z+2.72,.09,h*.94,.09,metal,false);
+    pipe.position.y=h*.48;
+    for(let clamp=0;clamp<4;clamp++) box(side*17.61,.22,z+2.72,.18,.045,.16,dark,false).position.y=.7+clamp*h*.22;
+  }
 }
 
+// A disabled, burned-out utility vehicle provides believable street-scale cover.
+const wreckBody=box(2.05,.68,-10,2.25,.72,4.15,dark);
+wreckBody.rotation.y=.08; collisionMeshes.push(wreckBody);
+const wreckCab=box(2.05,1.25,-10.42,1.92,.62,1.72,metal);
+wreckCab.rotation.y=.08;
+const sootGlass=new THREE.MeshPhysicalMaterial({color:0x11191c,metalness:.35,roughness:.42});
+box(2.05,1.29,-10.42,1.72,.48,1.55,sootGlass,false);
+for(const wx of [-1.08,3.18]) for(const wz of [-11.35,-8.72]) {
+  const wheel=new THREE.Mesh(new THREE.CylinderGeometry(.38,.38,.22,18),dark);
+  wheel.rotation.z=Math.PI/2; wheel.position.set(wx,.38,wz); wheel.castShadow=true; scene.add(wheel);
+  const hub=new THREE.Mesh(new THREE.CylinderGeometry(.14,.14,.235,12),metal);
+  hub.rotation.z=Math.PI/2; hub.position.copy(wheel.position); scene.add(hub);
+}
+for(let i=0;i<7;i++) {
+  const shard=box(1.1+(Math.random()-.5)*1.7,.12,-10+(Math.random()-.5)*2.8,.18,.12,.65,metal,false);
+  shard.rotation.set(Math.random()*.3,Math.random()*Math.PI,Math.random()*.4);
+}
 // Street debris, broken concrete, road markings and tactical cover.
 for (let i=0;i<90;i++) {
   const x = (Math.random()-.5)*34, z = -38 + Math.random()*62;
@@ -199,6 +249,29 @@ for (const x of [-13,13]) for (const z of [-24,-5,14]) {
   box(x,3.8,z,.12,7.6,.12,dark,false);
   const lamp = new THREE.PointLight(0xffd8a1, 18, 13); lamp.position.set(x,7.2,z); scene.add(lamp);
 }
+
+// Suspended dust, drifting ash and distant smoke soften the hard procedural geometry.
+const smokePositions=new Float32Array(420*3);
+for(let i=0;i<420;i++) {
+  const plume=i%3, baseX=plume===0?-23:plume===1?23:0, baseZ=plume===2?-31:-20;
+  smokePositions[i*3]=baseX+(Math.random()-.5)*3.5;
+  smokePositions[i*3+1]=Math.random()*18;
+  smokePositions[i*3+2]=baseZ+(Math.random()-.5)*3.5;
+}
+const smokeGeometry=new THREE.BufferGeometry();
+smokeGeometry.setAttribute("position",new THREE.BufferAttribute(smokePositions,3));
+const smokeMaterial=new THREE.PointsMaterial({color:0x303735,size:1.65,transparent:true,opacity:.115,depthWrite:false,sizeAttenuation:true});
+const smokeCloud=new THREE.Points(smokeGeometry,smokeMaterial); scene.add(smokeCloud);
+const ashPositions=new Float32Array(260*3);
+for(let i=0;i<260;i++) {
+  ashPositions[i*3]=(Math.random()-.5)*42;
+  ashPositions[i*3+1]=Math.random()*10;
+  ashPositions[i*3+2]=-38+Math.random()*65;
+}
+const ashGeometry=new THREE.BufferGeometry();
+ashGeometry.setAttribute("position",new THREE.BufferAttribute(ashPositions,3));
+const ashField=new THREE.Points(ashGeometry,new THREE.PointsMaterial({color:0xb7a58b,size:.045,transparent:true,opacity:.34,depthWrite:false}));
+scene.add(ashField);
 
 const player = { speed: 7.5, sprint: 1.55, health: 100, reloading: false, lastShot: 0, verticalVelocity: 0, crouching: false, grounded: true };
 const enemies: Enemy[] = [];
@@ -645,6 +718,21 @@ function animate() {
     for(let i=grenadeObjects.length-1;i>=0;i--) { const g=grenadeObjects[i]; g.fuse-=dt; g.velocity.y-=18*dt; g.mesh.position.addScaledVector(g.velocity,dt); if(g.mesh.position.y<.15) {g.mesh.position.y=.15;g.velocity.y=Math.abs(g.velocity.y)*.42;g.velocity.x*=.72;g.velocity.z*=.72;} if(g.fuse<=0){detonateGrenade(g);grenadeObjects.splice(i,1);} }
     if(toastTimer>0) { toastTimer-=dt; if(toastTimer<=0) document.querySelector("#toast")!.classList.remove("show"); }
   }
+  // Slow vertical drift gives the district a persistent dusty atmosphere without heavy effects.
+  const smokeAttr=smokeGeometry.getAttribute("position") as THREE.BufferAttribute;
+  for(let i=0;i<420;i++) {
+    const y=smokeAttr.getY(i)+dt*(.22+(i%5)*.035);
+    smokeAttr.setY(i,y>19?0:y);
+    smokeAttr.setX(i,smokeAttr.getX(i)+Math.sin(performance.now()*.00018+i)*dt*.025);
+  }
+  smokeAttr.needsUpdate=true;
+  const ashAttr=ashGeometry.getAttribute("position") as THREE.BufferAttribute;
+  for(let i=0;i<260;i++) {
+    ashAttr.setY(i,ashAttr.getY(i)-dt*.18);
+    ashAttr.setX(i,ashAttr.getX(i)+Math.sin(performance.now()*.0004+i)*dt*.12);
+    if(ashAttr.getY(i)<.1) { ashAttr.setY(i,9+Math.random()*2); ashAttr.setX(i,(Math.random()-.5)*42); }
+  }
+  ashAttr.needsUpdate=true;
   drawRadar();
   composer.render();
 }
