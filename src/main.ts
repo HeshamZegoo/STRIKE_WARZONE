@@ -357,6 +357,23 @@ function buildWeaponVisual(index: number) {
     const screw=addCylinder(.018,.012,.29+side*.082,-.25,-.45,accent);
     screw.rotation.z=Math.PI/2;
   }
+  // Functional-looking receiver controls and weapon furniture.
+  addBox(.012,.095,.22,.395,-.235,-.58,polymer);
+  addBox(.018,.035,.12,.405,-.18,-.43,accent);
+  addBox(.035,.045,.10,.395,-.27,-.31,accent);
+  addBox(.045,.10,.07,.245,-.31,-.38,metal);
+  addBox(.10,.055,.28,.29,-.13,-.96,accent);
+  for(let slot=0;slot<5;slot++) addBox(.11,.012,.025,.29,-.09,-.86-slot*.045,polymer);
+  // Optic housing and front/rear iron sights.
+  if(index!==2) {
+    addBox(.11,.12,.18,.29,.075,-.62,polymer);
+    addBox(.075,.075,.035,.29,.08,-.62,accent);
+    addBox(.035,.07,.035,.29,.085,-.52,accent);
+  }
+  // Muzzle crown and cooling grooves on the exposed barrel.
+  for(let groove=0;groove<3;groove++) {
+    const ring=addCylinder(.043,.018,.29,-.23,index===1?-1.55-groove*.07:-1.36-groove*.055,accent);
+  }
   muzzle = new THREE.PointLight(0xffa34d,0,7); muzzle.position.set(.29,-.23,-1.62); weaponGroup.add(muzzle);
   const flash = new THREE.Mesh(new THREE.ConeGeometry(.105,.34,10),new THREE.MeshBasicMaterial({color:0xffc16b,transparent:true,opacity:.0}));
   flash.rotation.x=-Math.PI/2; flash.position.set(.29,-.23,-1.82); flash.name="muzzle-flash"; weaponGroup.add(flash);
