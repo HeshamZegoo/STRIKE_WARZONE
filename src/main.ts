@@ -108,13 +108,21 @@ function loadCombatMap(theme: MapTheme) {
     if (theme === selectedMap) {
       refreshActiveMapCollision(theme);
       proceduralWorld.visible = false;
+      if (started) notify(`${mapSources[theme].label} READY`);
     }
     console.info(`Loaded CC0 ${theme} map`, { size: size.toArray(), scale });
-  }, undefined, error => {
+  }, event => {
+    if (theme === selectedMap && event.lengthComputable) {
+      const percent = Math.round(event.loaded / Math.max(event.total, 1) * 100);
+      setText("#objective-detail", `LOADING ${mapSources[theme].label}: ${percent}%`);
+    }
+  }, error => {
     mapLoading.delete(theme);
     if (theme === selectedMap) {
       proceduralWorld.visible = true;
       refreshActiveMapCollision(theme);
+      setText("#objective-detail", `${mapSources[theme].label} FAILED — PROCEDURAL MAP ACTIVE`);
+      if (started) notify("MAP DOWNLOAD FAILED — USING BACKUP ARENA");
     }
     console.warn(`${theme} map unavailable; procedural fallback remains active.`, error);
   });
@@ -1453,11 +1461,10 @@ mapSelect?.addEventListener("change", () => {
   const map = mapSelect.value as MapTheme;
   if (map in mapSources) setCombatMap(map);
 });
-// Preload all three campaign environments in the background. Successfully loaded
-// maps stay cached, avoiding a blocking download at chapter transitions.
-loadCombatMap("urban");
-window.setTimeout(()=>loadCombatMap("arctic"),250);
-window.setTimeout(()=>loadCombatMap("desert"),700);
+// Load only the selected environment. Large GLB scenes are fetched on demand and
+// cached after success; downloading every map at startup wastes memory and can stall
+// lower-end devices before the player even deploys.
+loadCombatMap(selectedMap);
 
 document.querySelector("#start-button")!.addEventListener("click",()=>{
   document.querySelector("#start-screen")!.classList.add("hidden"); resetGame();
