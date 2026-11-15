@@ -278,9 +278,10 @@ scene.add(ashField);
 // Licensed CC0 tactical town starter scene. If the CDN is unavailable, the
 // existing procedural fallback remains visible and fully playable.
 const tacticalMapLoader = new GLTFLoader();
-const proceduralFallback = scene.children.filter(object =>
-  object !== camera && object !== ground && object !== sky && !(object instanceof THREE.Light)
-);
+const importedMapRoot = new THREE.Group();
+importedMapRoot.name = "external-tactical-map";
+importedMapRoot.visible = false;
+scene.add(importedMapRoot);
 tacticalMapLoader.load(
   "https://cdn.3dassets.dev/assets/27595/v1/model.glb",
   (gltf) => {
@@ -309,9 +310,9 @@ tacticalMapLoader.load(
         node.frustumCulled = true;
       }
     });
-    scene.add(importedMap);
-    // Keep the original collision data for now; swap only its visible geometry.
-    proceduralFallback.forEach(object => { object.visible = false; });
+    importedMapRoot.add(importedMap);
+    importedMapRoot.visible = selectedMap === "urban";
+    // Keep procedural geometry and colliders active until a tested collision mesh is available.
     console.info("CC0 Tactical Shooter Hill Town map loaded.", { size: size.toArray(), fitScale });
   },
   undefined,
@@ -341,6 +342,26 @@ let missionStartedAt = 0;
 let objectiveKills = 0;
 let uavUntil = 0;
 const MAX_CAMPAIGN_WAVES = 3;
+type GameMode = "campaign" | "survival" | "time-attack";
+type MapTheme = "urban" | "arctic" | "desert";
+let selectedMode: GameMode = "campaign";
+let selectedMap: MapTheme = "urban";
+let timeAttackEndsAt = 0;
+const mapThemes: Record<MapTheme, { label: string; background: number; fog: number; ground: number; sun: number }> = {
+  urban: { label: "URBAN DISTRICT", background: 0x343c40, fog: 0x4b514f, ground: 0x454b49, sun: 0xd6b28a },
+  arctic: { label: "ARCTIC OUTPOST", background: 0x82939b, fog: 0x9eafb5, ground: 0x9ba5a6, sun: 0xc8e0ed },
+  desert: { label: "DESERT CHECKPOINT", background: 0x8a6245, fog: 0x94765d, ground: 0x81745f, sun: 0xffc17d }
+};
+function applyMapTheme(theme: MapTheme) {
+  selectedMap = theme;
+  const preset = mapThemes[theme];
+  scene.background = new THREE.Color(preset.background);
+  scene.fog = new THREE.FogExp2(preset.fog, theme === "arctic" ? .007 : .0105);
+  ground.material = new THREE.MeshStandardMaterial({ color: preset.ground, roughness: .96 });
+  sun.color.setHex(preset.sun);
+  if (importedMapRoot) importedMapRoot.visible = theme === "urban" && importedMapRoot.children.length > 0;
+  setText("#map-status", preset.label);
+}
 let extractionActive = false;
 let sessionEpoch = 0;
 let reloadToken = 0;
@@ -580,9 +601,10 @@ function createExtraction() {
 }
 
 function spawnWave() {
-  if (wave >= MAX_CAMPAIGN_WAVES) { createExtraction(); return; }
+  if (selectedMode === "campaign" && wave >= MAX_CAMPAIGN_WAVES) { createExtraction(); return; }
+  if (selectedMode === "time-attack" && performance.now() >= timeAttackEndsAt) { showEnd(true); return; }
   wave++;
-  const count = Math.min(3 + wave*2, 18);
+  const count = selectedMode === "survival" ? Math.min(5 + wave*2, 36) : selectedMode === "time-attack" ? Math.min(6 + wave*2, 30) : Math.min(3 + wave*2, 18);
   for (let i=0;i<count;i++) {
     const a = (i/count)*Math.PI*2 + Math.random()*.3;
     const r = 23 + Math.random()*10;
@@ -592,7 +614,7 @@ function spawnWave() {
   setText("#enemies-left", `HOSTILES: ${count}`);
   setText("#objective-title", wave === 1 ? "SECURE THE DISTRICT" : wave === 2 ? "REPEL THE COUNTERATTACK" : "ELIMINATE THE HEAVY UNIT");
   setText("#objective-detail", `HOSTILES REMAINING: ${count}`);
-  notify(`OPERATION BLACKOUT — WAVE ${wave}/${MAX_CAMPAIGN_WAVES}`);
+  notify(selectedMode === "survival" ? `ENDLESS WAR — WAVE ${wave}` : selectedMode === "time-attack" ? `TIME ATTACK — WAVE ${wave}` : `OPERATION BLACKOUT — WAVE ${wave}/${MAX_CAMPAIGN_WAVES}`);
 }
 function setText(selector:string, value:string) { const el=document.querySelector<HTMLElement>(selector); if(el) el.textContent=value; }
 function notify(message:string) {
@@ -700,10 +722,10 @@ function resetGame() {
   player.health=100; damageImmuneUntil=0; player.reloading=false; player.verticalVelocity=0; player.crouching=false; player.grounded=true;
   weapons.forEach(w=>{w.ammo=w.magazine;}); weapons[0].reserve=180; weapons[1].reserve=72; weapons[2].reserve=102; weapons[3].reserve=48; weapons[4].reserve=200;
   grenadeObjects.forEach(g=>scene.remove(g.mesh)); grenadeObjects.length=0; grenades=3; killStreak=0; totalKills=0; objectiveKills=0; activeWeapon=0; buildWeaponVisual(0);
-  camera.position.set(0,1.7,12); camera.rotation.set(0,0,0); wave=0; score=0; missionStartedAt=performance.now();
+  camera.position.set(0,1.7,12); camera.rotation.set(0,0,0); wave=0; score=0; missionStartedAt=performance.now(); timeAttackEndsAt=missionStartedAt+5*60*1000;
   document.querySelector("#end-screen")!.classList.add("hidden");
   document.querySelector("#pause-screen")!.classList.add("hidden");
-  updateHUD(); setText("#best-score", String(bestScore).padStart(6,"0")); spawnWave(); paused=false; started=true;
+  updateHUD(); setText("#best-score", String(bestScore).padStart(6,"0")); applyMapTheme(selectedMap); spawnWave(); paused=false; started=true;
   canvas.requestPointerLock();
 }
 function damage(amount:number) {
@@ -752,6 +774,8 @@ function animate() {
   requestAnimationFrame(animate);
   const dt=Math.min(clock.getDelta(),.04);
   if(started && !paused) {
+    if (selectedMode === "time-attack" && performance.now() >= timeAttackEndsAt) { showEnd(true); }
+    if (selectedMode === "time-attack") setText("#objective-detail", `TIME LEFT: ${Math.max(0, Math.ceil((timeAttackEndsAt-performance.now())/1000))} SEC`);
     const forward=new THREE.Vector3(); camera.getWorldDirection(forward); forward.y=0; forward.normalize();
     const right=new THREE.Vector3().crossVectors(forward,new THREE.Vector3(0,1,0)).normalize().negate();
     const move=new THREE.Vector3();
@@ -870,6 +894,8 @@ function showMainMenu() {
   document.querySelectorAll<HTMLElement>(".screen").forEach(screen=>screen.classList.add("hidden"));
   document.querySelector("#start-screen")!.classList.remove("hidden");
 }
+document.querySelector<HTMLSelectElement>("#mode-select")!.addEventListener("change", event => { selectedMode=(event.currentTarget as HTMLSelectElement).value as GameMode; setText("#mode-status", selectedMode.toUpperCase().replace("-", " ")); });
+document.querySelector<HTMLSelectElement>("#map-select")!.addEventListener("change", event => applyMapTheme((event.currentTarget as HTMLSelectElement).value as MapTheme));
 document.querySelector("#settings-start")!.addEventListener("click",()=>openSettings("start-screen"));
 document.querySelector("#settings-pause")!.addEventListener("click",()=>openSettings("pause-screen"));
 document.querySelector("#settings-back")!.addEventListener("click",closeSettings);
