@@ -22,20 +22,11 @@
       "scope": "assembled canyon section, not the entire 88-model pack"
     }
   ],
-  "characters": [
-    {
-      "id": "veteran-running",
-      "name": "Veteran Running Pose",
-      "url": "/assets/characters/veteran-running.glb",
-      "license": "CC0-1.0",
-      "rigged": false,
-      "animated": false
-    }
-  ],
+  "characters": [],
   "notes": [
-    "All 3D models are downloaded once into public/assets and loaded from local paths at runtime.",
-    "Run npm run assets:download while online once; after that the game does not request remote model files.",
-    "The veteran model is a static posed mesh; it is not a skinned animated character.",
+    "All 3D maps are downloaded once into public/assets/maps and loaded from local paths at runtime.",
+    "Run npm run assets:download while online once; after that the game does not request remote map files.",
+    "Enemy soldiers use the project's animated procedural tactical rig; no static posed character is loaded.",
     "Imported GLB scenes provide visual geometry only; gameplay collision/navmesh remains project-owned.",
     "Fonts use local system fallbacks; no Google Fonts request is made."
   ]
