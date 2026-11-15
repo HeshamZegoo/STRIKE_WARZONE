@@ -7,7 +7,6 @@ const assets = [
   { name: "Urban combat map", url: "https://cdn.3dassets.dev/assets/27595/v1/model.glb", path: "public/assets/maps/urban.glb" },
   { name: "Arctic retreat map", url: "https://cdn.3dassets.dev/assets/19851/v1/model.glb", path: "public/assets/maps/arctic.glb" },
   { name: "Desert canyon map", url: "https://cdn.3dassets.dev/assets/21034/v1/model.glb", path: "public/assets/maps/desert.glb" },
-  { name: "Veteran character", url: "https://cdn.3dassets.dev/assets/27593/v1/model.glb", path: "public/assets/characters/veteran-running.glb" }
 ];
 
 async function download(asset) {
