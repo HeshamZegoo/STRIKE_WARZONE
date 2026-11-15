@@ -40,3 +40,22 @@ button{pointer-events:auto;cursor:pointer;border:0;background:#d7a34a;color:#111
 .objective-dot{box-shadow:0 0 8px #d7a34a,0 0 22px rgba(255,164,62,.65)}
 .radar-panel{box-shadow:0 8px 34px rgba(0,0,0,.3),inset 0 0 24px rgba(72,139,145,.07)}
 .pause-card{box-shadow:0 24px 90px rgba(0,0,0,.48),0 0 36px rgba(215,163,74,.06)}
+
+/* Full menu and settings UI */
+.main-menu-actions,.menu-stack{display:flex;flex-direction:column;align-items:flex-start;gap:10px}
+.main-menu-actions button{width:260px;text-align:left}
+button.secondary-button{background:rgba(18,27,31,.92);color:#e8edf0;border:1px solid rgba(215,163,74,.42);clip-path:none;min-width:190px}
+button.secondary-button:hover,button.secondary-button.selected{background:#d7a34a;color:#111719}
+.menu-stack{align-items:stretch}.menu-stack button{width:100%}
+.settings-card{position:relative;width:min(620px,92vw);max-height:88vh;overflow:auto;padding:clamp(24px,5vw,48px);background:linear-gradient(145deg,rgba(14,23,27,.98),rgba(5,9,12,.97));border:1px solid rgba(215,163,74,.45);box-shadow:0 28px 100px rgba(0,0,0,.65);backdrop-filter:blur(18px)}
+.settings-card h2{font:900 clamp(42px,7vw,68px)/.9 'Barlow Condensed';margin:18px 0 30px;letter-spacing:-1px}
+.settings-card h2 strong{color:#d7a34a}
+.setting-group{padding:18px 0;border-top:1px solid rgba(190,204,202,.14)}
+.setting-group label{display:flex;justify-content:space-between;gap:14px;color:#dfe5e3;font:700 12px 'Barlow Condensed';letter-spacing:2px}
+.setting-group label b{color:#d7a34a}
+.setting-group input[type=range]{width:100%;margin:18px 0 4px;accent-color:#d7a34a;cursor:pointer}
+.quality-options{display:flex;gap:9px;margin-top:14px;flex-wrap:wrap}.quality-options button{flex:1;min-width:90px}
+.controls-grid{display:grid;grid-template-columns:150px 1fr;gap:12px 18px;margin:12px 0 28px}
+.controls-grid span{padding:9px 12px;background:rgba(215,163,74,.1);border:1px solid rgba(215,163,74,.22);font:700 12px 'Barlow Condensed';letter-spacing:1px;color:#e7bd78}
+.controls-grid b{align-self:center;font:600 12px 'Rajdhani';letter-spacing:1.5px;color:#dce3e1}
+@media(max-width:650px){.start-content{width:92vw}.main-menu-actions button{width:100%}.controls-grid{grid-template-columns:112px 1fr;gap:9px}.settings-card{padding:22px}}
