@@ -9,10 +9,10 @@
     },
     {
       "id": "arctic",
-      "name": "Arctic Station FPS Kit",
-      "url": "https://cdn.3dassets.dev/assets/28553/v1/model.glb",
+      "name": "Frozen Lake Retreat (Alpine Snow Village)",
+      "url": "https://cdn.3dassets.dev/assets/19851/v1/model.glb",
       "license": "CC0-1.0",
-      "scope": "81-model pack starter scene"
+      "scope": "24 x 20 m winter combat environment; 54.2k triangles"
     },
     {
       "id": "desert",
