@@ -442,6 +442,57 @@ function makeEnemy(x:number,z:number): Enemy {
     boot.position.set(0,-.66,-.075); leg.add(boot);
     g.add(leg);
   }
+  // Field kit detail: MOLLE webbing, hydration pack, radio cabling and reinforced combat uniform.
+  const fabricA=mat(Math.random()>.5?0x303a32:0x45483a), fabricB=mat(0x242d28), webbing=mat(0x77765c), rubber=mat(0x171d1b);
+  const addKitBox=(w:number,h:number,d:number,x:number,y:number,z:number,m:THREE.Material,rx=0,ry=0,rz=0)=>{
+    const part=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m);
+    part.position.set(x,y,z); part.rotation.set(rx,ry,rz); part.castShadow=true; part.receiveShadow=true; g.add(part); return part;
+  };
+  // Rear plate carrier and hydration pack, visible in profile and from behind.
+  addKitBox(.48,.58,.24,0,1.16,.22,fabricB);
+  addKitBox(.34,.42,.20,0,1.31,.39,fabricA);
+  addKitBox(.25,.09,.12,0,1.58,.38,webbing);
+  // Shoulder straps and chest harness.
+  for(const sx of [-1,1]) {
+    const strap=addKitBox(.085,.62,.055,sx*.22,1.25,-.205,webbing,sx*.13,0,sx*-.08);
+    addKitBox(.16,.12,.12,sx*.34,1.42,-.12,fabricB,0,0,sx*-.12);
+    addKitBox(.12,.18,.11,sx*.36,1.08,-.19,fabricA,0,0,sx*-.1);
+    // Reinforced elbow and knee protection.
+    addKitBox(.22,.16,.19,sx*.49,.91,-.035,rubber,0,0,sx*.08);
+    addKitBox(.24,.19,.21,sx*.19,.37,-.11,fabricB);
+    addKitBox(.10,.12,.07,sx*.36,1.17,-.27,webbing);
+  }
+  // Modular chest magazines, radio pouch, tourniquet and utility belt.
+  for(let p=0;p<4;p++) {
+    const px=(p-1.5)*.145;
+    addKitBox(.115,.19,.12,px,1.04,-.275,p%2?fabricB:fabricA);
+    addKitBox(.10,.035,.125,px,1.14,-.282,webbing);
+  }
+  addKitBox(.66,.11,.38,0,.79,0,fabricB);
+  for(let p=0;p<5;p++) addKitBox(.105,.13,.12,(p-2)*.145,.77,-.02,webbing);
+  addKitBox(.15,.23,.14,-.39,1.18,.08,fabricB);
+  addKitBox(.045,.31,.045,-.39,1.47,.08,metal);
+  // Helmet rails, side headset, night-vision mount and chin strap.
+  addKitBox(.42,.045,.12,0,1.96,-.015,metal);
+  addKitBox(.07,.10,.15,-.27,1.86,0,rubber);
+  addKitBox(.07,.10,.15,.27,1.86,0,rubber);
+  addKitBox(.10,.09,.14,0,2.02,-.22,metal);
+  const nvgArm=addKitBox(.035,.16,.035,0,1.99,-.31,metal,.25);
+  const nvgPod=addKitBox(.11,.09,.12,0,1.91,-.39,rubber);
+  addKitBox(.035,.22,.035,.19,1.70,-.16,webbing,.3,0,-.22);
+  // Gloves and reinforced boots add a more grounded silhouette.
+  for(const sx of [-1,1]) {
+    const glove=new THREE.Mesh(new THREE.SphereGeometry(.105,10,8),rubber);
+    glove.position.set(sx*.44,.80,-.13); g.add(glove);
+    addKitBox(.22,.12,.39,sx*.19,.09,-.10,rubber);
+    addKitBox(.21,.055,.36,sx*.19,.045,-.11,metal);
+  }
+  // Weapon handguard, magazine, optic and suppressor details.
+  addKitBox(.075,.09,.38,.35,1.16,-.64,fabricB);
+  addKitBox(.17,.25,.16,.35,.91,-.48,rubber,.12);
+  addKitBox(.08,.09,.14,.35,1.27,-.40,metal);
+  const sling=new THREE.Mesh(new THREE.TorusGeometry(.16,.018,6,20),webbing);
+  sling.position.set(.18,1.05,.02); sling.rotation.x=Math.PI/2; g.add(sling);
   const marker = new THREE.Mesh(new THREE.RingGeometry(.32,.42,20), new THREE.MeshBasicMaterial({color:0xff5544,side:THREE.DoubleSide}));
   marker.position.set(0,2.45,0); marker.rotation.x=Math.PI/2; marker.visible=false; g.add(marker);
   g.position.set(x,0,z); scene.add(g);
@@ -694,6 +745,8 @@ function animate() {
       const stride=(e.state==="engage"?.08:.42)*Math.sin(e.gait);
       e.leftLeg.rotation.x=stride; e.rightLeg.rotation.x=-stride;
       e.leftArm.rotation.x=-stride*.45-.22; e.rightArm.rotation.x=stride*.45-.22;
+      e.leftArm.rotation.z=THREE.MathUtils.lerp(e.leftArm.rotation.z,.08,1-Math.exp(-8*dt));
+      e.rightArm.rotation.z=THREE.MathUtils.lerp(e.rightArm.rotation.z,-.08,1-Math.exp(-8*dt));
       e.mesh.position.y=Math.abs(Math.sin(e.gait*2))*(e.state==="engage"?.008:.025);
       if(dist<29 && performance.now()>e.attackAt && hasLineOfSight(new THREE.Vector3(e.mesh.position.x,1.15,e.mesh.position.z),new THREE.Vector3(camera.position.x,camera.position.y-.2,camera.position.z))) {
         e.attackAt=performance.now()+(1050+Math.random()*850);
