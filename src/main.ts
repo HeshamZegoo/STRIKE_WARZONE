@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { clone as cloneSkeleton } from "three/addons/utils/SkeletonUtils.js";
 import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
@@ -8,7 +9,7 @@ import { ShaderPass } from "three/addons/postprocessing/ShaderPass.js";
 import "./style.css";
 
 type EnemyType = "grunt" | "rusher" | "heavy";
-type Enemy = { type: EnemyType; maxHp: number; mesh: THREE.Group; hp: number; speed: number; attackAt: number; alive: boolean; state: "advance" | "flank" | "engage"; strafeDir: number; marker: THREE.Mesh; leftLeg: THREE.Group; rightLeg: THREE.Group; leftArm: THREE.Group; rightArm: THREE.Group; gait: number; mixer?: THREE.AnimationMixer; }
+type Enemy = { type: EnemyType; maxHp: number; mesh: THREE.Group; hp: number; speed: number; attackAt: number; alive: boolean; state: "advance" | "flank" | "engage"; strafeDir: number; marker: THREE.Mesh; leftLeg?: THREE.Group; rightLeg?: THREE.Group; leftArm?: THREE.Group; rightArm?: THREE.Group; gait: number; mixer?: THREE.AnimationMixer; actions?: { idle?: THREE.AnimationAction; walk?: THREE.AnimationAction; run?: THREE.AnimationAction }; currentAction?: THREE.AnimationAction; };
 type Weapon = { id: number; name: string; meta: string; damage: number; interval: number; magazine: number; ammo: number; reserve: number; reloadMs: number; automatic: boolean; pellets?: number; spread?: number };
 const weapons: Weapon[] = [
   { id: 1, name: "STRIKER AR", meta: "5.56 × 45 MM  •  AUTO", damage: 34, interval: 105, magazine: 30, ammo: 30, reserve: 180, reloadMs: 1350, automatic: true, spread: .003 },
@@ -32,6 +33,16 @@ const mapSources: Record<MapTheme, { label: string; url: string }> = {
   desert: { label: "DESERT CANYON", url: "/assets/maps/desert.glb" }
 };
 const mapLoader = new GLTFLoader();
+const soldierLoader = new GLTFLoader();
+let soldierTemplate: THREE.Group | null = null;
+let soldierAnimations: THREE.AnimationClip[] = [];
+let resolveSoldierReady!: () => void;
+const soldierReady = new Promise<void>(resolve => { resolveSoldierReady = resolve; });
+const mapPreloadQueue: MapTheme[] = (["urban", "arctic", "desert"] as MapTheme[]).filter(theme => theme !== selectedMap);
+function preloadNextMap() {
+  const next = mapPreloadQueue.shift();
+  if (next) loadCombatMap(next);
+}
 const mapRoots: Partial<Record<MapTheme, THREE.Group>> = {};
 const activeMapMeshes: THREE.Mesh[] = [];
 let activeMapBounds: THREE.Box3[] = [];
@@ -110,6 +121,7 @@ function loadCombatMap(theme: MapTheme) {
       if (started) notify(`${mapSources[theme].label} READY`);
     }
     console.info(`Loaded CC0 ${theme} map`, { size: size.toArray(), scale });
+    preloadNextMap();
   }, event => {
     if (theme === selectedMap && event.lengthComputable) {
       const percent = Math.round(event.loaded / Math.max(event.total, 1) * 100);
@@ -124,6 +136,7 @@ function loadCombatMap(theme: MapTheme) {
       if (started) notify("MAP DOWNLOAD FAILED — USING BACKUP ARENA");
     }
     console.warn(`${theme} map unavailable; procedural fallback remains active.`, error);
+    preloadNextMap();
   });
 }
 function setCombatMap(theme: MapTheme) {
@@ -856,6 +869,45 @@ function switchWeapon(index:number) {
 
 function makeEnemy(x:number,z:number,type:EnemyType="grunt"): Enemy {
   const g = new THREE.Group();
+  if (soldierTemplate) {
+    // Every hostile is a real skinned soldier model. SkeletonUtils is required so
+    // each clone owns an independent skeleton and can run its own animation mixer.
+    const character = cloneSkeleton(soldierTemplate);
+    character.rotation.y = Math.PI; // face the same -Z forward direction as the original combat rig
+    character.updateMatrixWorld(true);
+    const rawBounds = new THREE.Box3().setFromObject(character);
+    const rawHeight = Math.max(.01, rawBounds.getSize(new THREE.Vector3()).y);
+    character.scale.setScalar(1.82 / rawHeight);
+    character.updateMatrixWorld(true);
+    const fittedBounds = new THREE.Box3().setFromObject(character);
+    character.position.y -= fittedBounds.min.y;
+    character.traverse(part => {
+      if (part instanceof THREE.Mesh) { part.castShadow = true; part.receiveShadow = true; }
+    });
+    g.add(character);
+    const marker = new THREE.Mesh(new THREE.RingGeometry(.38,.5,24), new THREE.MeshBasicMaterial({color:0xff5544,side:THREE.DoubleSide}));
+    marker.position.set(0,2.15,0); marker.rotation.x=Math.PI/2; marker.visible=false; g.add(marker);
+    const stats = type==="heavy" ? { hp:750, speed:.85, scale:1.18 }
+      : type==="rusher" ? { hp:60, speed:3.4+Math.random()*.6, scale:.96 }
+      : { hp:100, speed:1.15+Math.random()*.65, scale:1 };
+    g.scale.setScalar(stats.scale);
+    g.position.set(x,0,z);
+    scene.add(g);
+    const mixer = new THREE.AnimationMixer(character);
+    const findClip = (...names:string[]) => soldierAnimations.find(clip => names.some(name => clip.name.toLowerCase().includes(name.toLowerCase())));
+    const actions = {
+      idle: findClip("Idle") ? mixer.clipAction(findClip("Idle")!) : undefined,
+      walk: findClip("Walk") ? mixer.clipAction(findClip("Walk")!) : undefined,
+      run: findClip("Run") ? mixer.clipAction(findClip("Run")!) : undefined
+    };
+    const initial = actions.idle ?? actions.walk ?? actions.run;
+    initial?.play();
+    const enemy: Enemy = { type, maxHp:stats.hp, mesh:g, hp:stats.hp, speed:stats.speed, attackAt:0, alive:true, state:"advance", strafeDir:Math.random()>.5?1:-1, marker, gait:0, mixer, actions, currentAction:initial };
+    marker.raycast = () => {};
+    g.traverse((part: THREE.Object3D) => { part.userData.enemy = enemy; });
+    return enemy;
+  }
+  // Procedural fallback is used only if the local soldier asset cannot be loaded.
   const body = new THREE.Mesh(new THREE.CapsuleGeometry(.42,.72,5,8), mat(0x343d3b));
   body.position.y = 1.05; body.castShadow = true; g.add(body);
   const head = new THREE.Mesh(new THREE.SphereGeometry(.25,12,10), mat(0x927d68));
@@ -1292,10 +1344,9 @@ function animate() {
     if(fireHeld && locked) shoot();
     updateEffects(dt);
     for(const e of enemies) if(e.alive) {
-      e.mixer?.update(dt);
       const dx=camera.position.x-e.mesh.position.x, dz=camera.position.z-e.mesh.position.z;
       const dist=Math.hypot(dx,dz);
-      e.mesh.rotation.y=Math.atan2(dx,dz)+Math.PI; // models face -Z, so add PI to look at the player
+      e.mesh.rotation.y=Math.atan2(dx,dz)+Math.PI; // both soldier asset and fallback rig face -Z
       const safeDist=Math.max(dist,.001);
       let vx=0, vz=0;
       if(e.type==="rusher") {
@@ -1324,11 +1375,23 @@ function animate() {
         if(!collidesAt(e.mesh.position.x,nextZ,er)) e.mesh.position.z=nextZ;
         else { e.strafeDir*=-1; vz=0; }
       }
+      const isMoving = Math.hypot(vx,vz) > .12;
+      const desiredAction = isMoving
+        ? (e.type === "rusher" ? (e.actions?.run ?? e.actions?.walk) : (e.actions?.walk ?? e.actions?.run))
+        : (e.actions?.idle ?? e.actions?.walk);
+      if (desiredAction && desiredAction !== e.currentAction) {
+        e.currentAction?.fadeOut(.16);
+        desiredAction.reset().fadeIn(.16).play();
+        e.currentAction = desiredAction;
+      }
+      e.mixer?.update(dt);
       e.gait += dt*(e.type==="rusher"?13:e.state==="advance"?8:e.state==="flank"?5:2);
       const stride=(e.state==="engage"?.08:.42)*Math.sin(e.gait);
-      e.leftLeg.rotation.x=stride; e.rightLeg.rotation.x=-stride;
-      e.leftArm.rotation.x=-stride*.45-.22; e.rightArm.rotation.x=stride*.45-.22;
-      e.mesh.position.y=Math.abs(Math.sin(e.gait*2))*(e.state==="engage"?.008:.025);
+      if (e.leftLeg) e.leftLeg.rotation.x=stride;
+      if (e.rightLeg) e.rightLeg.rotation.x=-stride;
+      if (e.leftArm) e.leftArm.rotation.x=-stride*.45-.22;
+      if (e.rightArm) e.rightArm.rotation.x=stride*.45-.22;
+      if (!e.mixer) e.mesh.position.y=Math.abs(Math.sin(e.gait*2))*(e.state==="engage"?.008:.025);
       const nowMs=performance.now();
       if(e.type==="rusher") {
         // Rushers sprint in and strike in melee.
@@ -1446,13 +1509,29 @@ mapSelect?.addEventListener("change", () => {
   const map = mapSelect.value as MapTheme;
   if (map in mapSources) setCombatMap(map);
 });
-// Load only the selected environment. Large GLB scenes are fetched on demand and
-// cached after success; downloading every map at startup wastes memory and can stall
-// lower-end devices before the player even deploys.
+// Load the real rigged soldier and preload all three maps sequentially in the
+// background. The deploy button waits for the soldier so no cartoon placeholder
+// is spawned while the character asset is still downloading.
+soldierLoader.load("/assets/characters/soldier.glb", gltf => {
+  soldierTemplate = gltf.scene;
+  soldierAnimations = gltf.animations;
+  console.info("Rigged soldier ready", soldierAnimations.map(clip => clip.name));
+  resolveSoldierReady();
+}, undefined, error => {
+  console.error("Rigged soldier failed to load; procedural fallback will be used.", error);
+  resolveSoldierReady();
+});
 loadCombatMap(selectedMap);
 
 document.querySelector("#start-button")!.addEventListener("click",()=>{
-  document.querySelector("#start-screen")!.classList.add("hidden"); resetGame();
+  const button = document.querySelector<HTMLButtonElement>("#start-button")!;
+  button.disabled = true;
+  setText("#objective-detail", "LOADING RIGGED SOLDIER...");
+  void soldierReady.then(() => {
+    button.disabled = false;
+    document.querySelector("#start-screen")!.classList.add("hidden");
+    resetGame();
+  });
 });
 document.querySelector("#resume-button")!.addEventListener("click",()=>{
   paused=false; document.querySelector("#pause-screen")!.classList.add("hidden"); canvas.requestPointerLock();
