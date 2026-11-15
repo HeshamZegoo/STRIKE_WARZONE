@@ -28,9 +28,9 @@ scene.fog = new THREE.Fog(0x8a9699, 32, 115);
 type MapTheme = "urban" | "arctic" | "desert";
 let selectedMap: MapTheme = "urban";
 const mapSources: Record<MapTheme, { label: string; url: string }> = {
-  urban: { label: "HILL TOWN // URBAN", url: "https://cdn.3dassets.dev/assets/27595/v1/model.glb" },
-  arctic: { label: "FROZEN LAKE // ARCTIC RETREAT", url: "https://cdn.3dassets.dev/assets/19851/v1/model.glb" },
-  desert: { label: "DESERT CANYON", url: "https://cdn.3dassets.dev/assets/21034/v1/model.glb" }
+  urban: { label: "HILL TOWN // URBAN", url: "/assets/maps/urban.glb" },
+  arctic: { label: "FROZEN LAKE // ARCTIC RETREAT", url: "/assets/maps/arctic.glb" },
+  desert: { label: "DESERT CANYON", url: "/assets/maps/desert.glb" }
 };
 const mapLoader = new GLTFLoader();
 const mapRoots: Partial<Record<MapTheme, THREE.Group>> = {};
@@ -852,7 +852,7 @@ function switchWeapon(index:number) {
 }
 
 const operatorLoader = new GLTFLoader();
-const OPERATOR_MODEL_URL = "https://cdn.3dassets.dev/assets/27593/v1/model.glb";
+const OPERATOR_MODEL_URL = "/assets/characters/veteran-running.glb";
 let operatorTemplate: THREE.Group | null = null;
 let operatorAnimations: THREE.AnimationClip[] = [];
 let operatorLoading = false;
