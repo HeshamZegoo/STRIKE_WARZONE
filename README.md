@@ -35,7 +35,7 @@ Set-ExecutionPolicy -Scope Process Bypass
 
 ## Fully offline game assets
 
-The game loads its maps from local files under `public/assets/maps/`; enemy soldiers are animated procedural characters, and the game does not fetch 3D models from a CDN while playing. The first setup needs an internet connection one time to download the assets:
+The game loads all three maps from local files under `public/assets/maps/` and uses a rigged, animated military soldier GLB for enemy bots. The first setup needs an internet connection one time to download and validate the assets:
 
 ```powershell
 npm install
@@ -47,6 +47,7 @@ The Windows setup script runs both steps automatically. Once the downloads finis
 - `public/assets/maps/urban.glb`
 - `public/assets/maps/arctic.glb`
 - `public/assets/maps/desert.glb`
+- `public/assets/characters/soldier.glb`
 
 The game uses local system fonts, so Google Fonts is not required. To build a Windows installer that includes the downloaded maps, run `BUILD_WINDOWS.ps1` after setup.
 
@@ -76,7 +77,7 @@ Tauri output is placed under:
 
 ## Notes
 
-The arena and combatants are procedural placeholders. The project intentionally starts with a small dependency set. It does not require Unreal Engine.
+The fallback arena and some props are procedural. Enemy bots use independently animated clones of the rigged soldier model. The project intentionally starts with a small dependency set. It does not require Unreal Engine.
 
 
 ## Visual upgrade pass
