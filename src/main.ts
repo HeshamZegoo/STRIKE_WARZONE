@@ -91,6 +91,7 @@ function loadCombatMap(theme: MapTheme) {
     if (!Number.isFinite(maxDimension) || maxDimension <= 0) {
       mapLoading.delete(theme);
       console.warn(`Invalid ${theme} map bounds; keeping procedural fallback.`);
+      preloadNextMap();
       return;
     }
     const horizontalFootprint = Math.max(size.x, size.z);
