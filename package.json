@@ -1,11 +1,13 @@
 {
   "name": "strike-warzon",
-  "version": "0.1.0",
   "private": true,
+  "version": "0.1.0",
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1",
     "build": "tsc && vite build",
+    "preview": "vite preview",
+    "tauri": "tauri",
     "tauri:dev": "tauri dev",
     "tauri:build": "tauri build"
   },
@@ -13,9 +15,8 @@
     "three": "^0.180.0"
   },
   "devDependencies": {
-    "@tauri-apps/cli": "^2.5.0",
-    "@types/three": "^0.180.0",
-    "typescript": "~5.8.3",
-    "vite": "^7.0.0"
+    "@tauri-apps/cli": "^2.8.4",
+    "typescript": "^5.9.3",
+    "vite": "^7.1.12"
   }
 }
